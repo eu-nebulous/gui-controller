@@ -1,0 +1,759 @@
+swagger: '2.0'
+info:
+  version: '1.0.0'
+  title: 'ApostropheCMS API'
+  description: API for managing various functionalities in ApostropheCMS, including user authentication, application management, and mathematical expression parsing.
+tags:
+  - name: Authentication
+    description: Endpoints related to user authentication
+  - name: Application Management
+    description: Endpoints for managing Applications
+  - name: Math Parser
+    description: Endpoints for parsing mathematical expressions
+  - name: YAML Parser
+    description: Endpoints for processing YAML content and finding keys
+  - name: Resources
+    description: Endpoints for managing Resources
+paths:
+  /api/v1/@apostrophecms/login/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login to obtain a bearer token
+      description: Authenticates user credentials and provides a bearer token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: 'random123Token456xyz'
+  /api/v1/application/:
+    get:
+      tags:
+        - Application Management
+      summary: Retrieve All Applications
+      description: Retrieves a list of all applications.
+      responses:
+        200:
+          description: Successfully retrieved list of applications.
+        500:
+          description: Server error.
+    post:
+      tags:
+        - Application Management
+      summary: Create a New Application
+      description: Creates a new application.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: uuid
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: content
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: variables
+          in: query
+          required: false
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              lowerValue:
+                type: number
+                format: float
+              higherValue:
+                type: number
+                format: float
+        - name: constants
+          in: query
+          required: false
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              number:
+                type: number
+                format: float
+        - name: Providers
+          in: query
+          required: false
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              platform:
+                type: string
+              enabled:
+                type: boolean
+        - name: metrics
+          in: query
+          required: false
+          schema:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - composite
+                  - raw
+              nameResult:
+                type: string
+              isWindowResult:
+                type: string
+              outputResult:
+                type: string
+              nameComposite:
+                type: string
+              formula:
+                type: string
+              isWindow:
+                type: boolean
+              isWindowType:
+                type: string
+                enum:
+                  - all
+                  - sliding
+              interval:
+                type: integer
+              unit:
+                type: string
+                enum:
+                  - ms
+                  - sec
+                  - min
+                  - hour
+                  - day
+              outputType:
+                type: string
+                enum:
+                  - all
+                  - sliding
+              outputInterval:
+                type: integer
+              outputUnit:
+                type: string
+                enum:
+                  - ms
+                  - sec
+                  - min
+                  - hour
+                  - day
+              nameRaw:
+                type: string
+              sensor:
+                type: string
+              config:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    config1:
+                      type: string
+                    config2:
+                      type: string
+        - name: sloViolations
+          in: query
+          required: false
+          schema:
+            type: object
+            properties:
+              LogicalOperator:
+                type: string
+                label: Logical Operator
+                enum:
+                  - and
+                  - or
+                  - not
+              Name:
+                type: string
+                label: Name
+              Operator:
+                type: string
+                label: Operator
+                enum:
+                  - ">"
+                  - "<"
+                  - "<="
+                  - ">="
+                  - "=="
+                  - "!=="
+              Value:
+                type: integer
+                label: Value
+              SubExpressionsLogicalOperator:
+                type: string
+                label: Logical Operator (Sub Expressions)
+                enum:
+                  - and
+                  - or
+                  - not
+              SubExpressionsName:
+                type: string
+                label: Name (Sub Expressions)
+              SubExpressionsOperator:
+                type: string
+                label: Operator (Sub Expressions)
+                enum:
+                  - ">"
+                  - "<"
+                  - "<="
+                  - ">="
+                  - "=="
+                  - "!=="
+              SubExpressionsValue:
+                type: integer
+                label: Value (Sub Expressions)
+        - name: utilityFunctions
+          in: query
+          required: false
+          schema:
+            type: object
+            properties:
+              functionName:
+                type: string
+                label: Function Name
+              functionType:
+                type: string
+                label: Function Type
+                enum:
+                  - maximize
+                  - constant
+              functionDetails:
+                type: string
+                label: Function Details
+              functionExpression:
+                type: string
+                label: Function Expression
+              functionExpressionVariables:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    nameVariable:
+                      type: string
+                    valueVariable:
+                      type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uuid:
+                  type: string
+                  readOnly: true
+                content:
+                  type: string
+                variables:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      firstNumber:
+                        type: number
+                        format: float
+                      secondNumber:
+                        type: number
+                        format: float
+                constants:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      number:
+                        type: number
+                        format: float
+                providers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      platform:
+                        type: string
+                      enabled:
+                        type: boolean
+                metrics:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - composite
+                          - raw
+                      nameResult:
+                        type: string
+                      isWindowResult:
+                        type: string
+                      outputResult:
+                        type: string
+                      nameComposite:
+                        type: string
+                      formula:
+                        type: string
+                      isWindow:
+                        type: boolean
+                      isWindowType:
+                        type: string
+                        enum:
+                          - all
+                          - sliding
+                      interval:
+                        type: integer
+                      unit:
+                        type: string
+                        enum:
+                          - ms
+                          - sec
+                          - min
+                          - hour
+                          - day
+                      output:
+                        type: object
+                        properties:
+                          typeOutput:
+                            type: string
+                            enum:
+                              - all
+                              - sliding
+                          intervalOutput:
+                            type: integer
+                          unitOoutput:
+                            type: string
+                            enum:
+                              - ms
+                              - sec
+                              - min
+                              - hour
+                              - day
+                      nameRaw:
+                        type: string
+                      sensor:
+                        type: string
+                      config:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            config1:
+                              type: string
+                            config2:
+                              type: string
+                sloViolations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      logicalOperator:
+                        type: string
+                        enum:
+                          - and
+                          - or
+                          - not
+                      name:
+                        type: string
+                      operator:
+                        type: string
+                        enum:
+                          - ">"
+                          - "<"
+                          - "<="
+                          - ">="
+                          - "=="
+                          - "!=="
+                      value:
+                        type: integer
+                      subExpressions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            logicalOperator:
+                              type: string
+                              enum:
+                                - and
+                                - or
+                                - not
+                            name:
+                              type: string
+                            operator:
+                              type: string
+                              enum:
+                                - ">"
+                                - "<"
+                                - "<="
+                                - ">="
+                                - "=="
+                                - "!=="
+                            value:
+                              type: integer
+                utilityFunctions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      functionName:
+                        type: string
+                        label: Function Name
+                      functionType:
+                        type: string
+                        label: Function Type
+                        enum:
+                          - maximize
+                          - constant
+                      functionDetails:
+                        type: string
+                        label: Function Details
+                        textarea: true
+                      functionExpression:
+                        type: string
+                        label: Function Expression
+                        textarea: true
+                      functionExpressionVariables:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            nameVariable:
+                              type: string
+                            valueVariable:
+                              type: string
+      responses:
+        201:
+          description: Successfully created a new application.
+        400:
+          description: Invalid data format.
+        500:
+          description: Server error.
+  /api/v1/application/{uuid}:
+    get:
+      tags:
+        - Application Management
+      summary: Retrieve a Specific Application
+      description: Retrieves a specific application by its UUID.
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successfully retrieved the application.
+        404:
+          description: Application not found.
+        500:
+          description: Server error.
+    delete:
+      tags:
+        - Application Management
+      summary: Delete a Specific Application
+      description: Deletes a specific application by its UUID.
+      parameters:
+        - name: UUID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successfully deleted the application.
+        404:
+          description: Application not found.
+        500:
+          description: Server error.
+
+
+  /api/v1/mathparser/expression:
+    post:
+      tags:
+        - Math Parser
+      summary: Parses a mathematical equation and extracts variable names.
+      description: Receives a mathematical equation in string format and returns the names of variables used in the equation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                equation:
+                  type: string
+                  description: The mathematical equation to be parsed.
+                  example: "x^2 + y - 3"
+      responses:
+        200:
+          description: A list of variable names found in the equation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  variables:
+                    type: array
+                    items:
+                      type: string
+                    description: Names of variables in the equation.
+        400:
+          description: Error message if the equation is missing or invalid.
+        500:
+          description: Internal server error.
+  /api/v1/kubevela/keys:
+    post:
+      tags:
+        - YAML Parser
+      summary: Processes YAML content and finds keys based on an optional query.
+      description: |
+        This endpoint accepts a string of YAML content and an optional query string.
+        It processes the YAML to extract a flat list of keys that match the query.
+        The query filters keys based on the provided string, returning only those that start with the query.
+        It returns a list of complete key paths without array indices.
+      parameters:
+        - in: query
+          name: q
+          required: false
+          description: Optional query string to filter the keys. It should be a dot-separated path prefix to filter the keys in the YAML content.
+          schema:
+            type: string
+            example: "spec.comp"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: YAML content in string format.
+                  example: |
+                    apiVersion: core.oam.dev/v1beta1
+                    kind: Application
+                    metadata:
+                      name: velaux
+                      namespace: vela-system
+                    spec:
+                      components:
+                        - name: namespace
+                          type: k8s-objects
+                          properties:
+                            objects:
+                              - apiVersion: v1
+                                kind: Namespace
+                                metadata:
+                                  name: my-namespace
+      responses:
+        200:
+          description: Successfully processed the YAML content and returns a list of matching keys.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: string
+                    description: List of keys found in the YAML content matching the query. Keys are complete paths without array indices.
+        400:
+          description: Bad request, returned when YAML content is not provided or is invalid.
+        404:
+          description: Not found, returned when no matching keys are found based on the provided query.
+        500:
+          description: Internal server error.
+  /api/v1/userapi/all:
+    get:
+      tags:
+        - Authentication
+      summary: Get All Users
+      description: Retrieve a list of all users.
+      responses:
+        200:
+          description: Successful operation. Returns a list of users.
+        403:
+          description: Insufficient permissions.
+        500:
+          description: Server error.
+
+  /api/v1/userapi/create-user:
+    post:
+      tags:
+        - Authentication
+      summary: Create a User
+      description: Create a new user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                email:
+                  type: string
+              required:
+                - username
+                - password
+                - email
+      responses:
+        200:
+          description: User created successfully.
+        400:
+          description: Invalid or missing required fields.
+        403:
+          description: Insufficient permissions.
+        500:
+          description: Server error.
+  /api/v1/userapi/{id}:
+    delete:
+      tags:
+        - Authentication
+      summary: Delete a User
+      description: Delete a user by their ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: User deleted successfully.
+        403:
+          description: Insufficient permissions.
+        404:
+          description: User not found.
+        500:
+          description: Server error.
+  /api/v1/resources:
+    get:
+      tags:
+        - Resources
+      summary: Get all Resources
+      description: Retrieve a list of all Resources.
+      responses:
+        200:
+          description: Array of Resources.
+        500:
+          description: Server error.
+
+    post:
+      tags:
+        - Resources
+      summary: Create a new Resource
+      description: Add a new Resource to the system.
+      parameters:
+        - in: body
+          name: Resources
+          description: Resources object
+          required: true
+          schema:
+            $ref: '#/definitions/Resources'
+      responses:
+        200:
+          description: Resource created successfully.
+        400:
+          description: Invalid input.
+        500:
+          description: Server error.
+
+  /api/v1/resources/{uuid}:
+    get:
+      tags:
+        - Resources
+      summary: Get a specific Resource
+      description: Retrieve a specific Resource by their UUID.
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Resource details.
+        404:
+          description: Resource not found.
+        500:
+          description: Server error.
+
+    delete:
+      tags:
+        - Resources
+      summary: Delete a Resource
+      description: Delete a specific Resource by their UUID.
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Resource deleted successfully.
+        404:
+          description: Resource not found.
+        500:
+          description: Server error.
+
+definitions:
+  Resources:
+    type: object
+    required:
+      - title
+      - platform
+      - appId
+      - appSecret
+    properties:
+      title:
+        type: string
+      platform:
+        type: string
+      appId:
+        type: string
+      appSecret:
+        type: string

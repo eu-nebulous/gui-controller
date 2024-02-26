@@ -1,0 +1,61 @@
+{
+  "name": "apos-app",
+  "version": "1.0.0",
+  "description": "Apostrophe 3 Essential Starter Kit Site",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app",
+    "dev": "nodemon",
+    "build": "bash ./scripts/heroku-release-tasks",
+    "serve": "NODE_ENV=production node app",
+    "release": "npm install && npm run build && node app @apostrophecms/migration:migrate"
+  },
+  "nodemonConfig": {
+    "delay": 1000,
+    "verbose": true,
+    "watch": [
+      "./app.js",
+      "./modules/**/*",
+      "./lib/**/*.js",
+      "./views/**/*.html"
+    ],
+    "ignoreRoot": [
+      ".git"
+    ],
+    "ignore": [
+      "**/ui/apos/",
+      "**/ui/src/",
+      "**/ui/public/",
+      "locales/*.json",
+      "public/uploads/",
+      "public/apos-frontend/*.js",
+      "data/"
+    ],
+    "ext": "json, js, html, scss, vue"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apostrophecms/starter-kit-essentials"
+  },
+  "author": "Apostrophe Technologies, Inc.",
+  "license": "MIT",
+  "dependencies": {
+    "@johmun/vue-tags-input": "^2.1.0",
+    "apostrophe": "^3.61.1",
+    "flat": "^5.0.2",
+    "joi": "^17.11.0",
+    "mathjs": "^12.2.1",
+    "normalize.css": "^8.0.1",
+    "rhea": "^3.0.2",
+    "slugify": "^1.6.6",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "uuid": "^9.0.1",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "eslint-config-apostrophe": "^4.0.0",
+    "nodemon": "^3.0.1"
+  }
+}
