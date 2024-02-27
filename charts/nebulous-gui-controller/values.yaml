@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: "quay.io/nebulous/gui-controller-java-spring-boot-demo"
+  repository: "quay.io/nebulous/gui-controller"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -38,7 +38,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 80
+  port: 3000
 
 ingress:
   enabled: false
@@ -80,3 +80,15 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+mongodb:
+  auth:
+    rootPassword: "nebulous-gui"
+    username: "admin"
+    password: "nebulous-gui"
+    database: "gui-controller"
+
+apostropheCMS:
+  user:
+    name: admin
+    password: admin

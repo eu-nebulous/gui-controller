@@ -9,7 +9,8 @@ USER node
 COPY --chown=node package*.json /srv/www/apostrophe/
 
 ENV NODE_ENV=production
-RUN npm ci
+
+RUN npm install
 
 COPY --chown=node . /srv/www/apostrophe/
 
