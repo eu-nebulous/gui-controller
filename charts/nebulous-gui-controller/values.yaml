@@ -87,8 +87,21 @@ mongodb:
     username: "admin"
     password: "nebulous-gui"
     database: "gui-controller"
+  
+env:
+  - name: ACTIVEMQ_HOST
+    value: "nebulous-activemq"
+  - name: ACTIVEMQ_PORT
+    value: "61616"
+  - name: ACTIVEMQ_USERNAME
+    value: "admin"
+  - name: ACTIVEMQ_PASSWORD
+    value: "nebulous"
+  - name: APOS_MONGODB_URI
+    value: "mongodb://admin:nebulous-gui@nebulous-gui-controller-mongodb:27017/admin"
 
 apostropheCMS:
   user:
     name: admin
     password: admin
+
