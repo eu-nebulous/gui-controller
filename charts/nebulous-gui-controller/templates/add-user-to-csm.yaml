@@ -21,5 +21,7 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         command: ["node"]
         args: ["app.js", "@apostrophecms/user:add", "{{ .Values.apostropheCMS.user.name }}", "{{ .Values.apostropheCMS.user.password }}"]
+        env:
+          {{- toYaml .Values.env | nindent 10 }}
       restartPolicy: Never
   backoffLimit: 4
