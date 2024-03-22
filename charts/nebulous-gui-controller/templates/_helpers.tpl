@@ -42,11 +42,25 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+{{- define "nebulous-gui-controller.mongodb.labels" -}}
+helm.sh/chart: {{ include "nebulous-gui-controller.chart" . }}
+{{ include "nebulous-gui-controller.mongodb.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
 {{/*
 Selector labels
 */}}
 {{- define "nebulous-gui-controller.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "nebulous-gui-controller.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- define "nebulous-gui-controller.mongodb.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "nebulous-gui-controller.name" . }}-mongodb
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

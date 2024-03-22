@@ -1,0 +1,45 @@
+{{ if .Values.mongodb.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nebulous-gui-controller.fullname" . }}-mongodb
+  labels:
+    {{- include "nebulous-gui-controller.mongodb.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: mongodb
+          image: "docker.io/mongodb/mongodb-community-server:7.0.7-ubuntu2204"
+          ports:
+            - name: mongodb
+              containerPort: 27017
+              protocol: TCP
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nebulous-gui-controller.fullname" . }}-mongodb
+  labels:
+    {{- include "nebulous-gui-controller.mongodb.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 27017
+      targetPort: mongodb
+      protocol: TCP
+      name: mongodb
+  selector:
+    {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 4 }}
+{{ end }}

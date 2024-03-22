@@ -82,12 +82,9 @@ tolerations: []
 affinity: {}
 
 mongodb:
-  auth:
-    rootPassword: "nebulous-gui"
-    username: "admin"
-    password: "nebulous-gui"
-    database: "gui-controller"
-  
+  # this enables the built-in mongodb deployment - not recommended for production
+  enabled: true
+
 env:
   - name: ACTIVEMQ_HOST
     value: "nebulous-activemq"
@@ -98,10 +95,9 @@ env:
   - name: ACTIVEMQ_PASSWORD
     value: "nebulous"
   - name: APOS_MONGODB_URI
-    value: "mongodb://admin:nebulous-gui@nebulous-gui-controller-mongodb:27017/admin"
+    value: "mongodb://username:password@nebulous-gui-controller-mongodb:27017/admin"
 
 apostropheCMS:
   user:
     name: admin
     password: admin
-
