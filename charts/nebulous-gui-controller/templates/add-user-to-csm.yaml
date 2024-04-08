@@ -19,8 +19,11 @@ spec:
       containers:
       - name: add-admin-user
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-        command: ["node"]
-        args: ["app.js", "@apostrophecms/user:add", "{{ .Values.apostropheCMS.user.name }}", "{{ .Values.apostropheCMS.user.password }}"]
+        command:
+          - sh
+          - -c
+          # FIXME: timeout and true - an ugly hack to kill the process because it hangs otherwise - unfortunately it does not check for success now
+          - "timeout 30 node app.js @apostrophecms/user:add {{ .Values.apostropheCMS.user.name }} {{ .Values.apostropheCMS.user.password }} || true"
         env:
           {{- toYaml .Values.env | nindent 10 }}
       restartPolicy: Never
