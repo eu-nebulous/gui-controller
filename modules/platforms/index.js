@@ -1,8 +1,13 @@
 const {v4: uuidv4} = require("uuid");
+const _ = require('lodash');
+
 module.exports = {
     extend: '@apostrophecms/piece-type',
     options: {
         label: 'Platform',
+        sort:{
+            sortOrder:1,
+        }
     },
 
     fields: {
@@ -11,12 +16,29 @@ module.exports = {
                 type: 'string',
                 label: 'UUID',
                 required: false
+            },
+            provider_name: {
+                type: 'string',
+                label: 'Provider Name',
+                required: false
+            },
+            public: {
+                type: 'boolean',
+                label: 'Public',
+                required: true,
+                def: true
+            },
+            sortOrder: {
+                type: 'integer',
+                label: 'Sort Order',
+                required: true,
+                def: 0,
             }
         },
         group: {
             basics: {
                 label: 'Basics',
-                fields: ['uuid']
+                fields: ['uuid','public','sortOrder']
             }
         }
     },
@@ -38,10 +60,12 @@ module.exports = {
                     const projection = {
                         title: 1,
                         uuid: 1,
+                        sortOrder: 1,
                     };
                     try {
                         const platforms = await self.find(req).project(projection).toArray();
-                        return platforms;
+
+                        return _.map(platforms, (p)=> { return {'title': p.title, 'uuid': p.uuid} })
                     } catch (error) {
                         throw self.apos.error('notfound', 'Platforms not found');
                     }

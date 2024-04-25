@@ -134,7 +134,11 @@ module.exports = {
                         template: {
                             type: 'string',
                             label: 'Template'
-                        }
+                        },
+                        initialValue: {
+                            type: 'float',
+                            label: 'Initial Value'
+                        },
                     }
                 }
             },
@@ -188,8 +192,8 @@ module.exports = {
                             type: 'select',
                             label: 'Level',
                             choices: [
-                                { label: 'Global', value: 'Global' },
-                                { label: 'Components', value: 'Components' }
+                                { label: 'Global', value: 'global' },
+                                { label: 'Components', value: 'components' }
                             ],
                             def: 'global'
                         },
@@ -197,7 +201,7 @@ module.exports = {
                             type: 'array',
                             label: 'Components',
                             if: {
-                                level: 'Components'
+                                level: 'components'
                             },
                             fields: {
                                 add: {
@@ -210,10 +214,12 @@ module.exports = {
                         },
                         name: {
                             type: 'string',
-                            label: 'Name',
-                            if: {
-                                type: ['composite', 'raw']
-                            }
+                            label: 'Name'
+                        },
+                        template: {
+                            type: 'string',
+                            label: 'Template',
+                            textarea: true,
                         },
                         formula: {
                             type: 'string',
@@ -239,7 +245,7 @@ module.exports = {
                                         type: 'select',
                                         label: 'Type Input',
                                         choices: [
-                                            {label: 'All', value: 'all'},
+                                            {label: 'Batch', value: 'batch'},
                                             {label: 'Sliding', value: 'sliding'}
                                         ],
                                     },
@@ -255,7 +261,8 @@ module.exports = {
                                             {label: 'Sec', value: 'sec'},
                                             {label: 'Min', value: 'min'},
                                             {label: 'Hour', value: 'hour'},
-                                            {label: 'Day', value: 'day'}
+                                            {label: 'Day', value: 'day'},
+                                            {label: 'Events', value: 'events'}
                                         ],
                                     },
                                 },
@@ -280,7 +287,8 @@ module.exports = {
                                         type: 'select',
                                         choices: [
                                             {label: 'All', value: 'all'},
-                                            {label: 'Sliding', value: 'sliding'}
+                                            {label: 'First', value: 'first'},
+                                            {label: 'Last', value: 'last'}
                                         ],
                                     },
                                     interval: {
@@ -330,47 +338,6 @@ module.exports = {
                                 }
                             }
                         },
-                        isWindowInputRaw: {
-                            type: 'boolean',
-                            label: 'Window Input',
-                            if: {
-                                type: 'raw'
-                            }
-                        },
-                        inputRaw: {
-                            type: 'object',
-                            label: 'Input',
-                            fields: {
-                                add: {
-                                    type: {
-                                        type: 'select',
-                                        label: 'Type Input',
-                                        choices: [
-                                            {label: 'All', value: 'all'},
-                                            {label: 'Sliding', value: 'sliding'}
-                                        ],
-                                    },
-                                    interval: {
-                                        type: 'integer',
-                                        label: 'Interval',
-                                    },
-                                    unit: {
-                                        type: 'select',
-                                        label: 'Unit',
-                                        choices: [
-                                            {label: 'Ms', value: 'ms'},
-                                            {label: 'Sec', value: 'sec'},
-                                            {label: 'Min', value: 'min'},
-                                            {label: 'Hour', value: 'hour'},
-                                            {label: 'Day', value: 'day'}
-                                        ],
-                                    },
-                                },
-                            },
-                            if: {
-                                isWindowInputRaw: true
-                            }
-                        },
                         isWindowOutputRaw: {
                             type: 'boolean',
                             label: 'Window Output',
@@ -387,7 +354,8 @@ module.exports = {
                                         type: 'select',
                                         choices: [
                                             {label: 'All', value: 'all'},
-                                            {label: 'Sliding', value: 'sliding'}
+                                            {label: 'First', value: 'first'},
+                                            {label: 'Last', value: 'last'}
                                         ],
                                     },
                                     interval: {
@@ -433,6 +401,7 @@ module.exports = {
                             label: 'Function Type',
                             choices: [
                                 {label: 'Maximize', value: 'maximize'},
+                                {label: 'Minimize', value: 'minimize'},
                                 {label: 'Constant', value: 'constant'}
                             ]
                         },
@@ -558,11 +527,11 @@ module.exports = {
                       application_update_sender.send({
                           "body":{"uuid":doc.uuid},
                           "message_annotations":{
-                              "subject":doc.uuid
+                              "application":doc.uuid
                           }
                       });
                       application_dsl_generic.send({body:{}, "message_annotations":{
-                              "subject":doc.uuid
+                              "application":doc.uuid
                           }});
                   }
               }
@@ -585,11 +554,11 @@ module.exports = {
                         application_update_sender.send({
                             "body":{"uuid":doc.uuid},
                             "message_annotations":{
-                                "subject":doc.uuid
+                                "application":doc.uuid
                             }
                         });
                         application_dsl_generic.send({body:{}, "message_annotations":{
-                                "subject":doc.uuid
+                                "application":doc.uuid
                             }});
                     }
                 }
@@ -786,10 +755,10 @@ module.exports = {
                 'string.base': 'Function Name must be a string.',
                 'any.required': 'Function Name is required.'
             }),
-            functionType: Joi.string().valid('maximize', 'constant').insensitive().required().messages({
+            functionType: Joi.string().valid('maximize', 'constant','minimize').insensitive().required().messages({
                 'string.base': 'Function Type must be a string.',
                 'any.required': 'Function Type is required.',
-                'any.only': 'Function Type must be either "Maximize" or "Constant".'
+                'any.only': 'Function Type must be either "Maximize" , "Constant" or "Minimize.'
             }),
             functionExpression: Joi.string().trim().required().messages({
                 'string.base': 'Function Expression must be a string.',
@@ -982,10 +951,12 @@ module.exports = {
                      try {
 
                          const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
-                         const result = await exn.application_dsl(uuid,
-                             kubevela.json(updatedApp.pop()),
-                             ""
-                         )
+                         const updatedAppItem = updatedApp.pop();
+
+                         await exn.application_dsl(uuid,
+                             kubevela.json(updatedAppItem), metric_model.yaml(updatedAppItem)
+                         );
+
                          //TODO refactor to use apostrophe CMS ORM
                          await self.apos.doc.db.updateOne(
                              { uuid: uuid },

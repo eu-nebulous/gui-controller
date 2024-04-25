@@ -8,54 +8,130 @@ const projection = {
     uuid: 1,
     organization: 1,
     platform: 1,
-    appId: 1,
-    appSecret: 1
+    subnet: 1,
+    endpoint: 1,
+    identityVersion: 1,
+    credentials: 1,
+    defaultNetwork: 1,
+    sshCredentials: 1,
+    _platform: 1
 };
 const resourcesSchema = Joi.object({
-    appId: Joi.string().required().messages({
-        'string.empty': 'App ID is required.',
-        'any.required': 'App ID is a required field.'
-    }),
-    appSecret: Joi.string().required().messages({
-        'string.empty': 'App Secret is required.',
-        'any.required': 'App Secret is a required field.'
-    }),
-    platform: Joi.string().required().messages({
-        'string.empty': 'Platform is required.',
+    _platform: Joi.required().messages({
         'any.required': 'Platform is a required field.'
+    })
+}).unknown().options({ abortEarly: false });
+
+const credentialsSchema = Joi.object({
+    user: Joi.string().required().messages({
+        'string.empty': 'Credentials: Users is required.',
+        'any.required': 'Credentials: Users is a required field.'
+    }),
+    secret: Joi.string().required().messages({
+        'string.empty': 'Credentials: Secret is required.',
+        'any.required': 'Credentials: Secret is a required field.'
     }),
 }).unknown().options({ abortEarly: false });
 
 module.exports = {
     extend: '@apostrophecms/piece-type',
     options: {
-        label: 'Resource',
+        label: 'Resource'
     },
     fields: {
         add: {
             uuid: {
                 type: 'string',
-                label: 'UUID',
-                readOnly: true
+                label: 'UUID'
             },
-            platform: {
-                type: 'string',
-                label: 'Platform'
+            _platform: {
+                label: 'Platform',
+                type: 'relationship',
+                withType: "platforms",
+                max:1
             },
-            appId: {
+            securityGroup:{
                 type: 'string',
-                label: 'App ID',
+                label: 'Security Group'
             },
-            appSecret: {
-                type: 'string',
-                label: 'App Secret',
+            sshCredentials: {
+                type: 'object',
+                label: 'SSH Credentials',
+                fields: {
+                    add: {
+                        username: {
+                            type: 'string',
+                            label: 'Username',
+                        },
+                        privateKey: {
+                            type: 'string',
+                            label: 'Private Key',
+                            textarea: true,
+                        },
+                        keyPairName: {
+                            type: 'string',
+                            label: 'Key Pair Name',
+                        },
+                    }
+                }
+            },
+            subnet:{
+                    type: 'string',
+                    label: 'Subnet'
+            },
+            endpoint:{
+                    type: 'string',
+                    label: 'Endpoint'
+            },
+            identityVersion:{
+                type: 'select',
+                label: 'Identity Version',
+                choices: [
+                    {'label':'v3', value:'3'}
+                ],
+                def: '3'
+            },
+            defaultNetwork:{
+                    type: 'string',
+                    label: 'Default Network'
+            },
+            credentials:{
+                type: 'object',
+                label: 'Credentials',
+                fields: {
+                    add: {
+                        user: {
+                            type: 'string',
+                            label: 'Username',
+                        },
+                        secret: {
+                            type: 'string',
+                            label: 'Secret',
+                            textarea: true,
+                        },
+                        domain: {
+                            type: 'string',
+                            label: 'Domain',
+                        },
+                    }
+                }
+
             }
         },
         group: {
             basics: {
                 label: 'Details',
-                fields: ['title', 'uuid', 'platform', 'appId', 'appSecret']
+                fields: ['title', 'uuid', '_platform', 'identityVersion']
+            },
+            network: {
+                label: 'Network',
+                fields: ['defaultNetwork','endpoint', 'subnet']
+            },
+            security: {
+                label: 'Security',
+                fields: ['securityGroup','credentials','sshCredentials']
             }
+
         }
     },
     handlers(self) {
@@ -79,16 +155,7 @@ module.exports = {
                     await generateUuid(doc);
                     try{
 
-                        if(doc.aposMode === 'published'){
-                             const message = await exn.register_cloud(
-                                 doc.uuid,
-                                 doc.appId,
-                                 doc.appSecret,
-                             )
-                            console.log("Registered ",message);
-
-                        }
-                        await self.updateWithPlatformInfo(doc);
+                        await self.updateWithPlatformInfo(req,doc);
                         await assignOrganization(req, doc);
 
                     }catch(e){
@@ -96,11 +163,10 @@ module.exports = {
                     }
                 }
             },
-
-
             beforeSave: {
                 async handler(req, doc, options) {
                     try {
+                        await self.updateWithPlatformInfo(req,doc)
                         self.validateDocument(doc);
                     } catch (error) {
                         if (error.name === 'required' && error.error && error.error.length > 0) {
@@ -113,28 +179,45 @@ module.exports = {
                         }
                     }
                 }
-            }
+            },
         }
     },
-
     methods(self) {
         return {
-            async  updateWithPlatformInfo(doc) {
-                if (doc.platform && !doc.platformUpdated) {
-                    const platformPiece = await self.apos.doc.db.findOne({
-                        type: 'platforms',
-                        uuid: doc.platform
-                    });
+            async  updateWithPlatformInfo(req, doc) {
 
-                    if (platformPiece) {
-                        doc.platform = platformPiece.title;
-                        doc.platformUpdated = true;
-                    } else {
-                        throw self.apos.error('notfound', 'Platform not found');
+                if(req.body.platform && req.body.platform.uuid){
+
+                    const platform = await self.apos.modules['platforms'].find(req,{'uuid':req.body.platform.uuid}).toObject();
+                    if(!platform){
+                        throw self.apos.error('notfound', 'Platform not found or empty');
                     }
+                    doc.platformIds = [platform._id]
+                    doc._platform = [platform]
+                    delete req.body.platform
                 }
-            },
+                return doc
 
+            },
+            cleanUp:function(self,req, resources){
+
+                _.each(resources,(r)=>{
+                    r= self.removeForbiddenFields(req,r)
+                    r['platform'] = null
+
+                    if( r._platform.length > 0 ){
+                        r['platform'] = {
+                            'uuid': r._platform[0].uuid,
+                            'title': r._platform[0].title,
+                        }
+                    }
+
+                    delete r._platform
+
+                })
+
+                return resources
+            },
             validateDocument(doc) {
                 const validateField = (data, schema) => {
                     const {error} = schema.validate(data);
@@ -147,6 +230,7 @@ module.exports = {
                     }
                 };
                 validateField(doc, resourcesSchema);
+                validateField(doc.credentials, credentialsSchema);
             }
         }
     },
@@ -159,10 +243,24 @@ module.exports = {
                     const adminOrganization = currentUser.organization;
                     try {
                         const filters = {
-                            organization: adminOrganization
+                            organization: adminOrganization,
                         };
-                        const resources = await self.find(req, filters).project(projection).toArray();
-                        return resources;
+                        const page = req.query.page || 1
+                        const pageSize = req.query.pageSize || 10
+                        const count = await self.find(req, filters).toCount()
+
+                        const resources = await self.find(req, filters).project(projection)
+                            .withPublished(true)
+                            .perPage(pageSize)
+                            .page(page)
+                            .toArray()
+
+
+                        return {
+                            "total":count,
+                            "page": page,
+                            "results":self.cleanUp(self,req,resources)
+                        };
                     } catch (error) {
                         throw self.apos.error('notfound', 'Resource not found');
                     }
@@ -182,19 +280,31 @@ module.exports = {
                             throw self.apos.error('notfound', 'Resource not found');
                         }
 
-                        return doc;
+                        return self.cleanUp(self,req, [doc])[0]
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
                 },
-                async 'candidates'(req) {
+                async ':uuid/candidates'(req) {
+                    const uuid = req.params.uuid;
 
                     if (!( req.user.organization)) {
                         throw self.apos.error('forbidden', 'You do not have permission to perform this action');
                     }
 
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
                     try {
 
+                        const doc = await self.find(req, { uuid: uuid  , organization:adminOrganization}).project(projection).toObject();
+                        if (!doc) {
+                            throw self.apos.error('notfound', 'Resource not found');
+                        }
+
+
+                        await exn.register_cloud(doc)
+                        await new Promise(resolve => setTimeout(resolve, 10000));
                         const message = await exn.get_cloud_candidates()
                         return _.map(JSON.parse(message.body), (r)=>{
                             return {
@@ -262,7 +372,6 @@ module.exports = {
                     if (!(req.user.role === "admin" && req.user.organization)) {
                         throw self.apos.error('forbidden', 'You do not have permission to perform this action');
                     }
-                    self.validateDocument(updateData);
 
                     const adminOrganization = req.user.organization;
 
@@ -271,33 +380,18 @@ module.exports = {
                             uuid: uuid,
                             organization: adminOrganization
                         };
-                        const resourcesToUpdate = await self.find(req, filters).project(projection).toArray();
-
-                        if (!resourcesToUpdate || resourcesToUpdate.length === 0) {
+                        const doc = await self.find(req, filters).toObject();
+                        if (!doc) {
                             throw self.apos.error('notfound', 'Resource not found');
                         }
+                        await self.updateWithPlatformInfo(req,doc)
+                        self.validateDocument(doc)
 
-                        const doc = resourcesToUpdate[0];
+                        let update = { ...doc, ...updateData };
+                        await  self.update(req,update)
 
+                        return self.cleanUp(self,req,[update])[0]
 
-                        if ('platform' in updateData) {
-                            let docToUpdate = { ...doc, ...updateData };
-                            await self.updateWithPlatformInfo(docToUpdate);
-
-                            await self.apos.doc.db.updateOne(
-                                { uuid: uuid },
-                                { $set: docToUpdate }
-                            );
-                        } else {
-                            await self.apos.doc.db.updateOne(
-                                { uuid: uuid },
-                                { $set: updateData }
-                            );
-                        }
-
-                        const resourceUpdated = await self.find(req, filters).project(projection).toArray();
-
-                        return resourceUpdated;
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }

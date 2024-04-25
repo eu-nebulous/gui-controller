@@ -8,9 +8,8 @@ module.exports = {
                     try {
                         let parsedEquation = mathutils.extractFromEquation(req.body.equation)
                         const variableNames = mathutils.extractVariableNames(parsedEquation);
-                        const uppercaseVariableNames = variableNames.map(name => name.toUpperCase());
                         return {
-                            variables: uppercaseVariableNames,
+                            variables: variableNames,
                         };
                     } catch (error) {
                         throw error;
