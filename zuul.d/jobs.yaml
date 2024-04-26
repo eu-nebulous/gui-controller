@@ -9,6 +9,10 @@
     description: Build the container images.
     files: &image_files
       - ^/
+    # NOTE(rpiliszek): Adding this due to the repo structure.
+    irrelevant-files: &image_irrelevant_files
+      - ^/charts/
+      - ^/zuul.d/
     vars: &image_vars
       promote_container_image_job: nebulous-gui-controller-upload-container-images
       container_images:
@@ -29,6 +33,7 @@
       - nebulous-gui-controller-container-images
     description: Build and upload the container images.
     files: *image_files
+    irrelevant-files: *image_irrelevant_files
     vars: *image_vars
 
 - job:
@@ -36,6 +41,7 @@
     parent: nebulous-promote-container-images
     description: Promote previously uploaded container images.
     files: *image_files
+    irrelevant-files: *image_irrelevant_files
     vars: *image_vars
 
 - job:
