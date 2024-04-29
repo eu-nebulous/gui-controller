@@ -22,8 +22,7 @@ spec:
         command:
           - sh
           - -c
-          # FIXME: timeout and true - an ugly hack to kill the process because it hangs otherwise - unfortunately it does not check for success now
-          - "timeout 30 node app.js @apostrophecms/user:add {{ .Values.apostropheCMS.user.name }} {{ .Values.apostropheCMS.user.password }} || true"
+          - "echo '{{ .Values.apostropheCMS.user.password }}' | node app.js @apostrophecms/user:add {{ .Values.apostropheCMS.user.name }} admin"
         env:
           {{- toYaml .Values.env | nindent 10 }}
       restartPolicy: Never
