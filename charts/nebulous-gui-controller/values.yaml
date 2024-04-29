@@ -89,7 +89,7 @@ env:
   - name: ACTIVEMQ_HOST
     value: "nebulous-activemq"
   - name: ACTIVEMQ_PORT
-    value: "61616"
+    value: "5672"
   - name: ACTIVEMQ_USERNAME
     value: "admin"
   - name: ACTIVEMQ_PASSWORD

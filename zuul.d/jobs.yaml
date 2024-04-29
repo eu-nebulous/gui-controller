@@ -11,8 +11,8 @@
       - ^/
     # NOTE(rpiliszek): Adding this due to the repo structure.
     irrelevant-files: &image_irrelevant_files
-      - ^/charts/
-      - ^/zuul.d/
+      - ^charts/
+      - ^zuul.d/
     vars: &image_vars
       promote_container_image_job: nebulous-gui-controller-upload-container-images
       container_images:
