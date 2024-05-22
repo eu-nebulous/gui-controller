@@ -8,7 +8,7 @@
       - nebulous-gui-controller-container-images
     description: Build the container images.
     files: &image_files
-      - ^/
+      - ^
     # NOTE(rpiliszek): Adding this due to the repo structure.
     irrelevant-files: &image_irrelevant_files
       - ^charts/
