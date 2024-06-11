@@ -14,6 +14,13 @@ spec:
       labels:
         {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 8 }}
     spec:
+      initContainers:
+        - name: init-mongo
+          image: "docker.io/mongodb/mongodb-community-server:5.0.15-ubuntu2004"
+          command: [ "mongosh", "--file", "/docker-entrypoint-initdb.d/init.js" ]
+          volumeMounts:
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
       containers:
         - name: mongodb
           image: "docker.io/mongodb/mongodb-community-server:4.4.29-ubuntu2004"
@@ -28,6 +35,14 @@ spec:
               value: password
             - name: MONGODB_INITDB_DATABASE
               value: nebulous
+          volumeMounts:
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-script
+          configMap:
+            name: mongodb-init-script
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
