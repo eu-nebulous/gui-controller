@@ -29,11 +29,11 @@ spec:
               containerPort: 27017
               protocol: TCP
           env:
-            - name: MONGODB_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_USERNAME
               value: username
-            - name: MONGODB_INITDB_ROOT_PASSWORD
+            - name: MONGO_INITDB_ROOT_PASSWORD
               value: password
-            - name: MONGODB_INITDB_DATABASE
+            - name: MONGO_INITDB_DATABASE
               value: nebulous
           volumeMounts:
             - name: init-script
@@ -42,7 +42,6 @@ spec:
         - name: init-script
           configMap:
             name: mongodb-init-script
-
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
