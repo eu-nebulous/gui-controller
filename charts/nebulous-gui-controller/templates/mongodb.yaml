@@ -16,18 +16,21 @@ spec:
     spec:
       containers:
         - name: mongodb
-          image: "docker.io/mongodb/mongodb-community-server:4.4.29-ubuntu2004"
+          image: "docker.io/mongodb/mongodb-community-server:7.0.6-ubuntu2204"
           ports:
             - name: mongodb
               containerPort: 27017
               protocol: TCP
           env:
-            - name: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGODB_INITDB_ROOT_USERNAME
               value: username
-            - name: MONGO_INITDB_ROOT_PASSWORD
+            - name: MONGODB_INITDB_ROOT_PASSWORD
               value: password
-            - name: MONGO_INITDB_DATABASE
-              values: nebulous
+            - name: MONGODB_INITDB_DATABASE
+              value: nebulous
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -56,4 +59,17 @@ spec:
       name: mongodb
   selector:
     {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nebulous-gui-controller.fullname" . }}-mongodb
+  labels:
+    {{- include "nebulous-gui-controller.mongodb.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
 {{ end }}
