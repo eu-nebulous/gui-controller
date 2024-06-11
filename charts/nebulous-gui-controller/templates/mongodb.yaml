@@ -28,6 +28,9 @@ spec:
               value: password
             - name: MONGODB_INITDB_DATABASE
               value: nebulous
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -56,4 +59,17 @@ spec:
       name: mongodb
   selector:
     {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nebulous-gui-controller.fullname" . }}-mongodb
+  labels:
+    {{- include "nebulous-gui-controller.mongodb.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
 {{ end }}
