@@ -16,18 +16,25 @@ spec:
     spec:
       containers:
         - name: mongodb
-          image: "docker.io/mongodb/mongodb-community-server:7.0.6-ubuntu2204"
+          image: docker.io/mongo:7.0.11
           ports:
             - name: mongodb
               containerPort: 27017
               protocol: TCP
           env:
-            - name: MONGODB_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_USERNAME
               value: username
-            - name: MONGODB_INITDB_ROOT_PASSWORD
+            - name: MONGO_INITDB_ROOT_PASSWORD
               value: password
-            - name: MONGODB_INITDB_DATABASE
+            - name: MONGO_INITDB_DATABASE
               value: nebulous
+          volumeMounts:
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-script
+          configMap:
+            name: {{ include "nebulous-gui-controller.fullname" . }}-mongodb
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
