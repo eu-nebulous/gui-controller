@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: mongodb
-          image: "docker.io/mongodb/mongodb-community-server:4.4.29-ubuntu2004"
+          image: "docker.io/mongodb/mongodb-community-server:7.0.6-ubuntu2204"
           ports:
             - name: mongodb
               containerPort: 27017
