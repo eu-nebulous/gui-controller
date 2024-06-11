@@ -14,16 +14,9 @@ spec:
       labels:
         {{- include "nebulous-gui-controller.mongodb.selectorLabels" . | nindent 8 }}
     spec:
-      initContainers:
-        - name: init-mongo
-          image: "docker.io/mongodb/mongodb-community-server:5.0.15-ubuntu2004"
-          command: [ "mongosh", "--file", "/docker-entrypoint-initdb.d/init.js" ]
-          volumeMounts:
-            - name: init-script
-              mountPath: /docker-entrypoint-initdb.d
       containers:
         - name: mongodb
-          image: "docker.io/mongodb/mongodb-community-server:4.4.29-ubuntu2004"
+          image: docker.io/mongo:5.0.26-rc0
           ports:
             - name: mongodb
               containerPort: 27017
