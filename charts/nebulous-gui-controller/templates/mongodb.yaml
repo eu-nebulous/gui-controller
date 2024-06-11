@@ -34,7 +34,7 @@ spec:
       volumes:
         - name: init-script
           configMap:
-            name: mongodb-init-script
+            name: {{ include "nebulous-gui-controller.fullname" . }}-mongodb
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
