@@ -1,19 +1,14 @@
 # Use an official Node runtime as a parent image (Alpine for smaller footprint)
 FROM node:lts-alpine3.15
 
+COPY --chown=node . /srv/www/apostrophe/
+RUN chown -R node: /srv/www/apostrophe
+
+USER node
 WORKDIR /srv/www/apostrophe
 
-RUN chown -R node: /srv/www/apostrophe
-USER node
-
-COPY --chown=node package*.json /srv/www/apostrophe/
-
 ENV NODE_ENV=production
-
 RUN npm install
-
-COPY --chown=node . /srv/www/apostrophe/
-
 RUN ./scripts/build-assets.sh
 
 EXPOSE 3000
