@@ -220,6 +220,9 @@ module.exports = {
                             type: 'string',
                             label: 'Template',
                             textarea: true,
+                            if: {
+                                type: 'composite'
+                            }
                         },
                         formula: {
                             type: 'string',
@@ -483,6 +486,9 @@ module.exports = {
             //     }
             // },
             beforeInsert: {
+                async convertComponents(req, doc, options) {
+                    self.convertComponentsToBackendFormat(req.body, doc);
+                },
                 async generateUuid(req, doc, options) {
                     if (!doc.uuid) {
                         doc.uuid = uuidv4();
@@ -490,6 +496,11 @@ module.exports = {
                     if (req.user && req.user.organization) {
                         doc.organization = req.user.organization;
                     }
+                },
+            },
+            beforeUpdate: {
+                async convertComponents(req, doc) {
+                    self.convertComponentsToBackendFormat(req.body, doc);
                 }
             },
             // afterInsert:{
@@ -808,6 +819,37 @@ module.exports = {
         }).unknown();
 
         return {
+            convertComponentsToBackendFormat(body, doc) {
+                if (body.metrics && Array.isArray(body.metrics)) {
+                    body.metrics.forEach((metric, index) => {
+                        if (metric.level === 'components' && Array.isArray(metric.components)) {
+                            body.metrics[index].components = metric.components.map(component => {
+                                if (typeof component === 'string') {
+                                    return { componentName: component };
+                                }
+                                return component; 
+                            });
+                        }
+                    });
+                }
+                Object.assign(doc, body);
+            },
+            convertComponentsToFrontendFormat(doc) {
+                const docCopy = { ...doc };
+
+                if (docCopy.metrics && Array.isArray(docCopy.metrics)) {
+                    docCopy.metrics = docCopy.metrics.map(metric => {
+                        if (metric.level === 'components' && Array.isArray(metric.components)) {
+                            metric.components = metric.components.map(componentObj => componentObj.componentName);
+                        }
+                        return metric;
+                    });
+                }
+
+                return docCopy;
+            },
+
+
             isValidStateTransition(currentState, newState) {
                 const validTransitions = {
                     'draft': ['valid'],
@@ -880,7 +922,6 @@ module.exports = {
                 })
                 return Promise.all(promises)
             },
-
         };
     },
     apiRoutes(self) {
@@ -982,7 +1023,10 @@ module.exports = {
                             throw self.apos.error('forbidden', 'Access denied');
                         }
 
-                        return doc;
+                        const responseDoc = self.convertComponentsToFrontendFormat(doc);
+
+
+                        return responseDoc;
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
@@ -1121,6 +1165,8 @@ module.exports = {
 
 
                     try {
+                        await self.convertComponentsHelper(updateData);
+                        
                         await self.apos.doc.db.updateOne(
                             { uuid: uuid },
                             { $set: updateData }
