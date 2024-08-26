@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const {v4: uuidv4} = require('uuid');
 const Joi = require('joi');
 const exn = require('../../lib/exn');
 const _ = require('lodash');
@@ -8,11 +8,13 @@ const projection = {
     uuid: 1,
     organization: 1,
     platform: 1,
+    regions: 1,
     subnet: 1,
     endpoint: 1,
     identityVersion: 1,
     credentials: 1,
     defaultNetwork: 1,
+    securityGroup: 1,
     sshCredentials: 1,
     _platform: 1
 };
@@ -20,7 +22,7 @@ const resourcesSchema = Joi.object({
     _platform: Joi.required().messages({
         'any.required': 'Platform is a required field.'
     })
-}).unknown().options({ abortEarly: false });
+}).unknown().options({abortEarly: false});
 
 const credentialsSchema = Joi.object({
     user: Joi.string().required().messages({
@@ -31,7 +33,7 @@ const credentialsSchema = Joi.object({
         'string.empty': 'Credentials: Secret is required.',
         'any.required': 'Credentials: Secret is a required field.'
     }),
-}).unknown().options({ abortEarly: false });
+}).unknown().options({abortEarly: false});
 
 module.exports = {
     extend: '@apostrophecms/piece-type',
@@ -48,9 +50,14 @@ module.exports = {
                 label: 'Platform',
                 type: 'relationship',
                 withType: "platforms",
-                max:1
+                max: 1
             },
-            securityGroup:{
+            regions: {
+                label: 'Regions',
+                type: 'string',
+                default: ''
+            },
+            securityGroup: {
                 type: 'string',
                 label: 'Security Group'
             },
@@ -75,27 +82,26 @@ module.exports = {
                     }
                 }
             },
-            subnet:{
-                    type: 'string',
-                    label: 'Subnet'
+            subnet: {
+                type: 'string',
+                label: 'Subnet'
             },
-            endpoint:{
-                    type: 'string',
-                    label: 'Endpoint'
+            endpoint: {
+                type: 'string',
+                label: 'Endpoint'
             },
-            identityVersion:{
+            identityVersion: {
                 type: 'select',
                 label: 'Identity Version',
                 choices: [
-                    {'label':'v3', value:'3'}
-                ],
-                def: '3'
+                    {'label': 'v3', value: '3'}
+                ]
             },
-            defaultNetwork:{
-                    type: 'string',
-                    label: 'Default Network'
+            defaultNetwork: {
+                type: 'string',
+                label: 'Default Network'
             },
-            credentials:{
+            credentials: {
                 type: 'object',
                 label: 'Credentials',
                 fields: {
@@ -121,15 +127,15 @@ module.exports = {
         group: {
             basics: {
                 label: 'Details',
-                fields: ['title', 'uuid', '_platform', 'identityVersion']
+                fields: ['title', 'uuid', '_platform', 'regions', 'identityVersion']
             },
             network: {
                 label: 'Network',
-                fields: ['defaultNetwork','endpoint', 'subnet']
+                fields: ['defaultNetwork', 'endpoint', 'subnet']
             },
             security: {
                 label: 'Security',
-                fields: ['securityGroup','credentials','sshCredentials']
+                fields: ['securityGroup', 'credentials', 'sshCredentials']
             }
 
         }
@@ -140,40 +146,42 @@ module.exports = {
                 doc.uuid = uuidv4();
             }
         }
+
         async function assignOrganization(req, doc) {
             if (req.user.role === "admin" && req.user.organization) {
                 doc.organization = req.user.organization;
             }
         }
+
         return {
             beforeInsert: {
 
                 async handler(req, doc) {
-                    if (!(req.user.role === "admin")){
+                    if (!(req.user.role === "admin")) {
                         throw self.apos.error('forbidden', 'Editors are not allowed to create resources');
                     }
                     await generateUuid(doc);
-                    try{
+                    try {
 
-                        await self.updateWithPlatformInfo(req,doc);
+                        await self.updateWithPlatformInfo(req, doc);
                         await assignOrganization(req, doc);
 
-                    }catch(e){
-                        throw self.apos.error('invalid', 'Unknown Error '+e);
+                    } catch (e) {
+                        throw self.apos.error('invalid', 'Unknown Error ' + e);
                     }
                 }
             },
             beforeSave: {
                 async handler(req, doc, options) {
                     try {
-                        await self.updateWithPlatformInfo(req,doc)
+                        await self.updateWithPlatformInfo(req, doc)
                         self.validateDocument(doc);
                     } catch (error) {
                         if (error.name === 'required' && error.error && error.error.length > 0) {
                             const formattedErrors = error.error.map(err => {
-                                return { field: err.path, message: err.message };
+                                return {field: err.path, message: err.message};
                             });
-                            throw self.apos.error('invalid', 'Validation failed', { errors: formattedErrors });
+                            throw self.apos.error('invalid', 'Validation failed', {errors: formattedErrors});
                         } else {
                             throw error;
                         }
@@ -184,12 +192,12 @@ module.exports = {
     },
     methods(self) {
         return {
-            async  updateWithPlatformInfo(req, doc) {
+            async updateWithPlatformInfo(req, doc) {
 
-                if(req.body.platform && req.body.platform.uuid){
+                if (req.body.platform && req.body.platform.uuid) {
 
-                    const platform = await self.apos.modules['platforms'].find(req,{'uuid':req.body.platform.uuid}).toObject();
-                    if(!platform){
+                    const platform = await self.apos.modules['platforms'].find(req, {'uuid': req.body.platform.uuid}).toObject();
+                    if (!platform) {
                         throw self.apos.error('notfound', 'Platform not found or empty');
                     }
                     doc.platformIds = [platform._id]
@@ -199,13 +207,13 @@ module.exports = {
                 return doc
 
             },
-            cleanUp:function(self,req, resources){
+            cleanUp: function (self, req, resources) {
 
-                _.each(resources,(r)=>{
-                    r= self.removeForbiddenFields(req,r)
+                _.each(resources, (r) => {
+                    r = self.removeForbiddenFields(req, r)
                     r['platform'] = null
 
-                    if( r._platform.length > 0 ){
+                    if (r._platform.length > 0) {
                         r['platform'] = {
                             'uuid': r._platform[0].uuid,
                             'title': r._platform[0].title,
@@ -257,9 +265,9 @@ module.exports = {
 
 
                         return {
-                            "total":count,
+                            "total": count,
                             "page": page,
-                            "results":self.cleanUp(self,req,resources)
+                            "results": self.cleanUp(self, req, resources)
                         };
                     } catch (error) {
                         throw self.apos.error('notfound', 'Resource not found');
@@ -268,19 +276,22 @@ module.exports = {
                 async ':uuid/uuid'(req) {
                     const uuid = req.params.uuid;
 
-                    if (!( req.user.organization)) {
+                    if (!(req.user.organization)) {
                         throw self.apos.error('forbidden', 'You do not have permission to perform this action');
                     }
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
                     try {
-                        const doc = await self.find(req, { uuid: uuid  , organization:adminOrganization}).project(projection).toObject();
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
                         if (!doc) {
                             throw self.apos.error('notfound', 'Resource not found');
                         }
 
-                        return self.cleanUp(self,req, [doc])[0]
+                        return self.cleanUp(self, req, [doc])[0]
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
@@ -288,7 +299,7 @@ module.exports = {
                 async ':uuid/candidates'(req) {
                     const uuid = req.params.uuid;
 
-                    if (!( req.user.organization)) {
+                    if (!(req.user.organization)) {
                         throw self.apos.error('forbidden', 'You do not have permission to perform this action');
                     }
 
@@ -297,7 +308,10 @@ module.exports = {
 
                     try {
 
-                        const doc = await self.find(req, { uuid: uuid  , organization:adminOrganization}).project(projection).toObject();
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
                         if (!doc) {
                             throw self.apos.error('notfound', 'Resource not found');
                         }
@@ -306,12 +320,12 @@ module.exports = {
                         await exn.register_cloud(doc)
                         await new Promise(resolve => setTimeout(resolve, 10000));
                         const message = await exn.get_cloud_candidates()
-                        return _.map(JSON.parse(message.body), (r)=>{
+                        return _.map(JSON.parse(message.body), (r) => {
                             return {
                                 id: r.nodeId,
                                 region: r.location.name,
                                 instanceType: r.hardware.name,
-                                virtualCores:  r.hardware.cores,
+                                virtualCores: r.hardware.cores,
                                 memory: r.hardware.ram
                             }
                         })
@@ -344,7 +358,10 @@ module.exports = {
                         };
 
                         //Νo refactor here because we need both docs.
-                        const docs = await self.apos.db.collection('aposDocs').find({ uuid: uuid, organization:adminOrganization }).toArray();
+                        const docs = await self.apos.db.collection('aposDocs').find({
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).toArray();
 
                         if (!docs || docs.length === 0) {
                             throw self.apos.error('notfound', 'Resource not found');
@@ -355,10 +372,10 @@ module.exports = {
                                 throw self.apos.error('forbidden', 'Access denied');
                             }
 
-                            await self.apos.db.collection('aposDocs').deleteOne({ uuid: doc.uuid });
+                            await self.apos.db.collection('aposDocs').deleteOne({uuid: doc.uuid});
                         }
 
-                        return { status: 'success', message: 'Resource deleted successfully' };
+                        return {status: 'success', message: 'Resource deleted successfully'};
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
@@ -384,13 +401,13 @@ module.exports = {
                         if (!doc) {
                             throw self.apos.error('notfound', 'Resource not found');
                         }
-                        await self.updateWithPlatformInfo(req,doc)
+                        await self.updateWithPlatformInfo(req, doc)
                         self.validateDocument(doc)
 
-                        let update = { ...doc, ...updateData };
-                        await  self.update(req,update)
+                        let update = {...doc, ...updateData};
+                        await self.update(req, update)
 
-                        return self.cleanUp(self,req,[update])[0]
+                        return self.cleanUp(self, req, [update])[0]
 
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);

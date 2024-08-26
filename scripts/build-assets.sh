@@ -1,7 +1,7 @@
 #!/bin/sh
 
-export APOS_RELEASE_ID=`cat /dev/urandom |env LC_CTYPE=C tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1`
+export EXN_DISABLE="True"
 
-echo $APOS_RELEASE_ID > ./release-id
+echo $BITBUCKET_BUILD_NUMBER > ./release-id
 
 node app @apostrophecms/asset:build

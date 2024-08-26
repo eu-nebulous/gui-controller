@@ -220,6 +220,9 @@ module.exports = {
                             type: 'string',
                             label: 'Template',
                             textarea: true,
+                            if: {
+                                type: 'composite'
+                            }
                         },
                         formula: {
                             type: 'string',
@@ -483,6 +486,9 @@ module.exports = {
             //     }
             // },
             beforeInsert: {
+                async convertComponents(req, doc, options) {
+                    self.convertComponentsToBackendFormat(req.body, doc);
+                },
                 async generateUuid(req, doc, options) {
                     if (!doc.uuid) {
                         doc.uuid = uuidv4();
@@ -490,6 +496,11 @@ module.exports = {
                     if (req.user && req.user.organization) {
                         doc.organization = req.user.organization;
                     }
+                },
+            },
+            beforeUpdate: {
+                async convertComponents(req, doc) {
+                    self.convertComponentsToBackendFormat(req.body, doc);
                 }
             },
             // afterInsert:{
@@ -577,6 +588,24 @@ module.exports = {
             'string.yaml': "Content must be in valid YAML format.",
         });
 
+        const environmenSchema = Joi.object({
+            name: Joi.string()
+                .required()
+                .pattern(new RegExp('^[a-zA-Z0-9_]{3,40}$'))
+                .messages({
+                'string.empty': "Please enter a name.",
+                'any.required': "Name is a required field."
+            }),
+            value: Joi.string()
+                .required()
+                .messages({
+                    'string.empty': "Please enter a value.",
+                    'any.required': "Name is a required field."
+                }),
+            secret: Joi.allow()
+
+        });
+
         const variableSchema = Joi.object({
             name: Joi.string().trim().required().messages({
                 'string.empty': "Please enter a name.",
@@ -646,109 +675,118 @@ module.exports = {
             })
         }).unknown();
 
-        // const metricSchema = Joi.object({
-        //     type: Joi.string().valid('composite', 'raw').required().messages({
-        //         'any.required': 'Metric type is required.',
-        //         'string.valid': 'Metric type must be either "composite" or "raw".'
-        //     }),
-        //     level: Joi.string().required().messages({
-        //         'string.base': 'Level must be a string.',
-        //         'any.required': 'Level is required.',
-        //         'any.only': 'Level must be either "Global" or "Components".'
-        //     }),
-        //     components: Joi.when('level', {
-        //         is: 'components',
-        //         then: Joi.array().items(Joi.object({
-        //             componentName: Joi.string().trim().required().messages({
-        //                 'string.base': 'Component Name must be a string.',
-        //                 'any.required': 'Component Name is required in components.'
-        //             })
-        //         }).unknown()).required()
-        //     }).required(),
-        //     name: Joi.when('type', {
-        //         is: 'composite,raw',
-        //         then: Joi.string().trim().required().messages({
-        //             'any.required': 'Name is required for composite metrics.',
-        //             'string.empty': 'Name cannot be empty.'
-        //         })
-        //     }),
-        //     formula: Joi.when('type', {
-        //         is: 'composite',
-        //         then: Joi.string().trim().required().messages({
-        //             'any.required': 'Formula is required for composite metrics.',
-        //             'string.empty': 'Formula cannot be empty.'
-        //         })
-        //     }),
-        //     isWindowInput: Joi.when('type', {
-        //         is: 'composite',
-        //         then: Joi.boolean().required()
-        //     }),
-        //     input: Joi.when('isWindowInput', {
-        //         is: true,
-        //         then: Joi.object({
-        //             type: Joi.string().valid('all', 'sliding').required(),
-        //             interval: Joi.number().integer().required(),
-        //             unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
-        //         }).required()
-        //     }),
-        //     isWindowOutput: Joi.when('type', {
-        //         is: 'composite',
-        //         then: Joi.boolean().required()
-        //     }),
-        //     output: Joi.when('isWindowOutput', {
-        //         is: true,
-        //         then: Joi.object({
-        //             type: Joi.string().valid('all', 'sliding').required(),
-        //             interval: Joi.number().integer().required(),
-        //             unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
-        //         }).required()
-        //     }),
-        //     sensor: Joi.when('type', {
-        //         is: 'raw',
-        //         then: Joi.string().trim().required()
-        //     }),
-        //     config: Joi.when('type', {
-        //         is: 'raw',
-        //         then: Joi.array().items(
-        //             Joi.object({
-        //                 name: Joi.string().trim().required().messages({
-        //                     'string.base': 'Name must be a string.',
-        //                     'any.required': 'Name is required in config for raw type.'
-        //                 }),
-        //                 value: Joi.string().trim().required().messages({
-        //                     'string.base': 'Value must be a string.',
-        //                     'any.required': 'Value is required in config for raw type.'
-        //                 }),
-        //             }).unknown(),
-        //         ).required()
-        //     }).messages({
-        //         'any.required': 'Config is required for raw type.'
-        //     }),
-        //     isWindowInputRaw: Joi.when('type', {
-        //         is: 'raw',
-        //         then: Joi.boolean().required()
-        //     }),
-        //     inputRaw: Joi.when('isWindowInputRaw', {
-        //         is: true,
-        //         then: Joi.object({
-        //             type: Joi.string().valid('all', 'sliding').required(),
-        //             interval: Joi.number().integer().required(),
-        //             unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
-        //         }).required()
-        //     }),
-        //     isWindowOutputRaw: Joi.when('type', {
-        //         is: 'raw',
-        //         then: Joi.boolean().required()
-        //     }),
-        //     outputRaw: Joi.when('isWindowOutputRaw', {
-        //         is: true,
-        //         then: Joi.object({
-        //             type: Joi.string().valid('all', 'sliding').required(),
-        //             interval: Joi.number().integer().required(),
-        //             unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
-        //         }).required()
-        //     })
-        // }).unknown();
+
+        const metricSchema = Joi.object({
+            name: Joi.string()
+                .required()
+                .pattern(new RegExp('^[a-zA-Z0-9_]*$'))
+                .messages({
+                    'string.empty': "Please enter a name.",
+                    'any.required': "Name is a required field."
+                }),
+            // type: Joi.string().valid('composite', 'raw').required().messages({
+            //     'any.required': 'Metric type is required.',
+            //     'string.valid': 'Metric type must be either "composite" or "raw".'
+            // }),
+
+            // level: Joi.string().required().messages({
+            //     'string.base': 'Level must be a string.',
+            //     'any.required': 'Level is required.',
+            //     'any.only': 'Level must be either "Global" or "Components".'
+            // }),
+            // components: Joi.when('level', {
+            //     is: 'components',
+            //     then: Joi.array().items(Joi.object({
+            //         componentName: Joi.string().trim().required().messages({
+            //             'string.base': 'Component Name must be a string.',
+            //             'any.required': 'Component Name is required in components.'
+            //         })
+            //     }).unknown()).required()
+            // }).required(),
+            // name: Joi.when('type', {
+            //     is: 'composite,raw',
+            //     then: Joi.string().trim().required().messages({
+            //         'any.required': 'Name is required for composite metrics.',
+            //         'string.empty': 'Name cannot be empty.'
+            //     })
+            // }),
+            // formula: Joi.when('type', {
+            //     is: 'composite',
+            //     then: Joi.string().trim().required().messages({
+            //         'any.required': 'Formula is required for composite metrics.',
+            //         'string.empty': 'Formula cannot be empty.'
+            //     })
+            // }),
+            // isWindowInput: Joi.when('type', {
+            //     is: 'composite',
+            //     then: Joi.boolean().required()
+            // }),
+            // input: Joi.when('isWindowInput', {
+            //     is: true,
+            //     then: Joi.object({
+            //         type: Joi.string().valid('all', 'sliding').required(),
+            //         interval: Joi.number().integer().required(),
+            //         unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
+            //     }).required()
+            // }),
+            // isWindowOutput: Joi.when('type', {
+            //     is: 'composite',
+            //     then: Joi.boolean().required()
+            // }),
+            // output: Joi.when('isWindowOutput', {
+            //     is: true,
+            //     then: Joi.object({
+            //         type: Joi.string().valid('all', 'sliding').required(),
+            //         interval: Joi.number().integer().required(),
+            //         unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
+            //     }).required()
+            // }),
+            // sensor: Joi.when('type', {
+            //     is: 'raw',
+            //     then: Joi.string().trim().required()
+            // }),
+            // config: Joi.when('type', {
+            //     is: 'raw',
+            //     then: Joi.array().items(
+            //         Joi.object({
+            //             name: Joi.string().trim().required().messages({
+            //                 'string.base': 'Name must be a string.',
+            //                 'any.required': 'Name is required in config for raw type.'
+            //             }),
+            //             value: Joi.string().trim().required().messages({
+            //                 'string.base': 'Value must be a string.',
+            //                 'any.required': 'Value is required in config for raw type.'
+            //             }),
+            //         }).unknown(),
+            //     ).required()
+            // }).messages({
+            //     'any.required': 'Config is required for raw type.'
+            // }),
+            // isWindowInputRaw: Joi.when('type', {
+            //     is: 'raw',
+            //     then: Joi.boolean().required()
+            // }),
+            // inputRaw: Joi.when('isWindowInputRaw', {
+            //     is: true,
+            //     then: Joi.object({
+            //         type: Joi.string().valid('all', 'sliding').required(),
+            //         interval: Joi.number().integer().required(),
+            //         unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
+            //     }).required()
+            // }),
+            // isWindowOutputRaw: Joi.when('type', {
+            //     is: 'raw',
+            //     then: Joi.boolean().required()
+            // }),
+            // outputRaw: Joi.when('isWindowOutputRaw', {
+            //     is: true,
+            //     then: Joi.object({
+            //         type: Joi.string().valid('all', 'sliding').required(),
+            //         interval: Joi.number().integer().required(),
+            //         unit: Joi.string().valid('ms', 'sec', 'min', 'hour', 'day').required()
+            //     }).required()
+            // })
+        }).unknown();
 
         const utilityFunctionSchema = Joi.object({
             functionName: Joi.string().trim().required().messages({
@@ -781,6 +819,37 @@ module.exports = {
         }).unknown();
 
         return {
+            convertComponentsToBackendFormat(body, doc) {
+                if (body.metrics && Array.isArray(body.metrics)) {
+                    body.metrics.forEach((metric, index) => {
+                        if (metric.level === 'components' && Array.isArray(metric.components)) {
+                            body.metrics[index].components = metric.components.map(component => {
+                                if (typeof component === 'string') {
+                                    return { componentName: component };
+                                }
+                                return component; 
+                            });
+                        }
+                    });
+                }
+                Object.assign(doc, body);
+            },
+            convertComponentsToFrontendFormat(doc) {
+                const docCopy = { ...doc };
+
+                if (docCopy.metrics && Array.isArray(docCopy.metrics)) {
+                    docCopy.metrics = docCopy.metrics.map(metric => {
+                        if (metric.level === 'components' && Array.isArray(metric.components)) {
+                            metric.components = metric.components.map(componentObj => componentObj.componentName);
+                        }
+                        return metric;
+                    });
+                }
+
+                return docCopy;
+            },
+
+
             isValidStateTransition(currentState, newState) {
                 const validTransitions = {
                     'draft': ['valid'],
@@ -834,88 +903,25 @@ module.exports = {
                 validateArray(doc.resources, resourcesSchema, 'resources');
                 validateArray(doc.parameters, parameterSchema, 'parameters');
                 validateArray(doc.templates, templateSchema, 'templates');
-                //validateArray(doc.metrics, metricSchema, 'metrics');
+                validateArray(doc.metrics, metricSchema, 'metrics');
                 validateArray(doc.utilityFunctions, utilityFunctionSchema, 'utilityFunctions');
+                validateArray(doc.environmentVariables, environmenSchema, 'environmentVariables');
 
                 if (errorResponses.length > 0) {
                     throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                 }
             },
-            async getApplicationData(uuid) {
-                try {
-
-                    const application = await self.apos.doc.db.findOne({ uuid: uuid });
-                    if (!application) {
-                        throw self.apos.error('notfound', 'Application not found', { uuid });
-                    }
-
-
-                    const data = {
-                        application: {
-                            name: application.title,
-                            uuid: application.uuid
-                        },
-                        kubvela: {
-                            original: application.content,
-                            variables: application.variables.map(variable => ({
-                                key: variable.name,
-                                value: variable.isConstant ? {
-                                    lower: variable.value,
-                                    upper: false
-                                } : {
-                                    lower: variable.lowerValue,
-                                    upper: variable.higherValue
-                                },
-                                meaining: '...',
-                                type: 'float',
-                                is_constant: variable.isConstant
-                            }))
-                        },
-                        cloud_providers: application.resources.map(resource => ({
-                            type: resource.platform,
-                            sal_key: resource.uuid
-                        })),
-                        metrics: application.metrics.map(metric => ({
-                            type: metric.type,
-                            key: metric.nameResult,
-                            name: metric.name,
-                            formula: metric.type === 'composite' ? metric.formula : undefined,
-                            window: metric.type === 'composite' && metric.isWindow ? {
-                                input: metric.input ? {
-                                    type: metric.input.type,
-                                    interval: metric.input.interval,
-                                    unit: metric.input.unit
-                                } : {},
-                                output: metric.output ? {
-                                    type: metric.output.type,
-                                    interval: metric.output.interval,
-                                    unit: metric.output.unit
-                                } : {}
-                            } : undefined,
-                            sensor: metric.type === 'raw' ? metric.sensor : undefined,
-                            config: metric.type === 'raw' ? metric.config.map(c => ({
-                                name: c.name,
-                                value: c.value
-                            })) : undefined
-                        })),
-                        slo: JSON.parse(application.sloViolations),
-                        utility_functions: application.utilityFunctions.map(func => ({
-                            key: func.functionName,
-                            name: func.functionName,
-                            type: func.functionType,
-                            formula: func.functionExpression,
-                            mapping: func.functionExpressionVariables.reduce((map, variable) => {
-                                map[variable.nameVariable] = variable.valueVariable;
-                                return map;
-                            }, {})
-                        }))
-                    };
-
-                    return data;
-                } catch (error) {
-                    throw self.apos.error('notfound', 'Application not found', {uuid});
-                }
-            }
+            async updateWithRegions(req, doc) {
+                let promises = []
+                doc.resources.forEach((r)=>{
+                    promises.push(new Promise(async (resolve)=>{
+                        const resource = await self.apos.modules['resources'].find(req, {'uuid': r.uuid}).toObject();
+                        r._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
+                        resolve()
+                    }))
+                })
+                return Promise.all(promises)
+            },
         };
     },
     apiRoutes(self) {
@@ -952,6 +958,9 @@ module.exports = {
 
                          const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
                          const updatedAppItem = updatedApp.pop();
+
+                         //TODO This is very ugly
+                         await self.updateWithRegions(req,updatedAppItem)
 
                          await exn.application_dsl(uuid,
                              kubevela.json(updatedAppItem), metric_model.yaml(updatedAppItem)
@@ -1014,7 +1023,10 @@ module.exports = {
                             throw self.apos.error('forbidden', 'Access denied');
                         }
 
-                        return doc;
+                        const responseDoc = self.convertComponentsToFrontendFormat(doc);
+
+
+                        return responseDoc;
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
@@ -1153,6 +1165,8 @@ module.exports = {
 
 
                     try {
+                        await self.convertComponentsHelper(updateData);
+                        
                         await self.apos.doc.db.updateOne(
                             { uuid: uuid },
                             { $set: updateData }
