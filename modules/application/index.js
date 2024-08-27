@@ -463,28 +463,11 @@ module.exports = {
 
     handlers(self) {
         return {
-            // 'apostrophe:ready': {
-            //     async setUpActiveMq() {
-            //         console.log("Set up rhea",
-            //             self.options.amqp_host, self.options.amqp_port);
-            //
-            //         container.on('connection_open', function (context) {
-            //             application_new_sender = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.new');
-            //             application_update_sender = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.update');
-            //             application_dsl_generic = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.dsl.generic');
-            //             application_dsl_metric = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.dsl.metric_model');
-            //         });
-            //
-            //         connection = container.connect({
-            //             'host': self.options.amqp_host,
-            //             'port': self.options.amqp_port,
-            //             'reconnect':true,
-            //             'username':'admin',
-            //             'password':'admin'
-            //         });
-            //
-            //     }
-            // },
+            'apostrophe:ready': {
+                async displayVersion() {
+                    console.log("Current version", process.env.NEBULOUS_VERSION);
+                }
+            },
             beforeInsert: {
                 async convertComponents(req, doc, options) {
                     self.convertComponentsToBackendFormat(req.body, doc);
