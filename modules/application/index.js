@@ -980,8 +980,45 @@ module.exports = {
                          throw self.apos.error(error.name, error.message);
                      }
 
-                }
+                },
+                async ':uuid/uuid/duplicate' (req) {
+                    const { uuid } = req.params;
+                    const { title } = req.body;
 
+                    if (!self.apos.permission.can(req, 'edit')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+
+                    const existingApp = await self.apos.doc.db.findOne({ uuid: uuid });
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    const newDocData = {
+                        title: title || `${existingApp.title} Copy`,
+                        type: existingApp.type,
+                        visibility: existingApp.visibility,
+                        content: existingApp.content,
+                        variables: _.cloneDeep(existingApp.variables),
+                        environmentVariables: _.cloneDeep(existingApp.environmentVariables),
+                        resources: _.cloneDeep(existingApp.resources),
+                        templates: _.cloneDeep(existingApp.templates),
+                        parameters: _.cloneDeep(existingApp.parameters),
+                        metrics: _.cloneDeep(existingApp.metrics),
+                        sloViolations: _.cloneDeep(existingApp.sloViolations),
+                        utilityFunctions: _.cloneDeep(existingApp.utilityFunctions),
+
+                        slug: `${existingApp.slug}-copy-${Date.now()}`,
+                        uuid: uuidv4(),
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        _id: undefined,
+                    };
+
+                    const newDoc = await self.insert(req, newDocData);
+                    
+                    return newDoc;
+                }
             },
             get: {
                 async all(req) {
