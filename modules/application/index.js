@@ -980,6 +980,7 @@ module.exports = {
                     const newDocData = {
                         title: title || `${existingApp.title} Copy`,
                         type: existingApp.type,
+                        status: 'draft',
                         visibility: existingApp.visibility,
                         content: existingApp.content,
                         variables: _.cloneDeep(existingApp.variables),
@@ -1185,7 +1186,7 @@ module.exports = {
 
 
                     try {
-                        await self.convertComponentsHelper(updateData);
+                        //await self.convertComponentsHelper(updateData);
                         
                         await self.apos.doc.db.updateOne(
                             { uuid: uuid },
