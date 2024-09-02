@@ -4,20 +4,11 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 source $SCRIPT_DIR/.secrets
 
-
 MONGODUMP_BIN="docker exec $DOCKER_IMAGE mongodump"
 MONGORESTORE_BIN="docker exec $DOCKER_IMAGE mongorestore"
 
-
-
-# FROM_URI="mongodb+srv://doadmin:$FROM_DB_PASSWORD@db-exz-nebulous-staging-710ec947.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=db-exz-nebulous-staging"
-# TO_URI="mongodb+srv://$TO_DB_USER:$TO_DB_PASSWORD@exz-nebulous-db-40f8722d.mongo.ondigitalocean.com/admin?tls=true&authSource=admin&replicaSet=exz-nebulous-db"
-
-
-FROM_URI="mongodb+srv://existanze:7OY96Li3150Z4THf@exz-nebulous-db-40f8722d.mongo.ondigitalocean.com/nebulous-development?tls=true&authSource=admin&replicaSet=exz-nebulous-db"
-TO_URI="mongodb://username:password@host.docker.internal:27017/?retryWrites=true&loadBalanced=false&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000"
-
-
+FROM_URI="mongodb+srv://${FROM_DB_USER}:${FROM_DB_PASSWORD}@${FROM_DB_HOST}/${FROM_DB}?tls=true&authSource=admin&replicaSet=exz-nebulous-db"
+TO_URI="mongodb://${TO_DB_USER}:${TO_DB_PASSWORD}@${TO_DB_HOST}/?retryWrites=true&loadBalanced=false&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000"
 
 DUMP_ARCHIVE="/tmp/${FROM_DB}-${TO_DB}.dump"
 rm -rf "${DUMP_ARCHIVE}"
