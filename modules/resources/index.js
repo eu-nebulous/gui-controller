@@ -153,6 +153,29 @@ module.exports = {
             }
         }
 
+        function convertEmptyStringsToNull(doc) {
+            const fieldsToCheck = [
+                'regions',
+                'securityGroup',
+                'subnet',
+                'endpoint',
+                'defaultNetwork',
+                'credentials.user',
+                'credentials.secret',
+                'credentials.domain',
+                'sshCredentials.username',
+                'sshCredentials.privateKey',
+                'sshCredentials.keyPairName'
+            ];
+
+            fieldsToCheck.forEach(field => {
+                if (_.has(doc, field) && doc[field] === '') {
+                    _.set(doc, field, null);
+                }
+            });
+        }
+
+
         return {
             beforeInsert: {
 
@@ -165,6 +188,7 @@ module.exports = {
 
                         await self.updateWithPlatformInfo(req, doc);
                         await assignOrganization(req, doc);
+                        convertEmptyStringsToNull(doc);
 
                     } catch (e) {
                         throw self.apos.error('invalid', 'Unknown Error ' + e);
