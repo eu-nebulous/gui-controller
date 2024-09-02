@@ -1,6 +1,9 @@
 # Use an official Node runtime as a parent image (Alpine for smaller footprint)
 FROM node:20-bullseye
 
+ARG BUILD_ID
+
+
 COPY --chown=node . /srv/www/apostrophe/
 RUN chown -R node: /srv/www/apostrophe
 
@@ -18,7 +21,7 @@ ENV ACTIVEMQ_HOST=""
 ENV ACTIVEMQ_PORT=""
 ENV ACTIVEMQ_USERNAME=""
 ENV ACTIVEMQ_PASSWORD=""
-ENV NEBULOUS_VERSION="not set"
+ENV NEBULOUS_VERSION=${BUILD_ID}
 
 # Command to run the app
 CMD [ "node", "app.js" ]
