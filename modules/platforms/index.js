@@ -42,26 +42,7 @@ module.exports = {
             }
         }
     },
-    init(self) {
-        self.apos.migration.add('insert-default-platforms', async () => {
-            try {
-                self.apos.util.log('Starting default platforms insertion migration...');
-                const req = self.apos.task.getReq();
 
-                const existingPlatforms = await self.find(req, {}).toCount();
-
-                if (existingPlatforms === 0) {
-                    self.apos.util.log('No platforms found. Inserting default platforms...');
-                    await self.insertDefaultPlatforms();
-                } else {
-                    self.apos.util.log('Platforms already exist. Skipping default insertion.');
-                }
-                self.apos.util.log('Finished default platforms insertion migration.');
-            } catch (error) {
-                self.apos.util.error('Error during migration:', error);
-            }
-        });
-    },
     handlers(self) {
         return {
             beforeSave: {
@@ -70,9 +51,30 @@ module.exports = {
                         doc.uuid = uuidv4();
                     }
                 }
+            },
+
+            'apostrophe:ready': {
+                async insertDefaultPlatforms() {
+                    try {
+                        const req = self.apos.task.getReq();
+                        self.apos.util.log('Apostrophe is ready');
+
+                        const existingPlatforms = await self.find(req, {}).toCount();
+
+                        if (existingPlatforms === 0) {
+                            self.apos.util.log('Inserting default platforms...');
+                            await self.insertDefaultPlatforms();
+                        } else {
+                            self.apos.util.log('Platforms already exist. Skipping insertion.');
+                        }
+                    } catch (error) {
+                        self.apos.util.error('Error during platform insertion:', error);
+                    }
+                }
             }
-        }
+        };
     },
+
     apiRoutes(self) {
         return {
             get: {
@@ -97,9 +99,7 @@ module.exports = {
         return {
             async insertDefaultPlatforms() {
                 const req = self.apos.task.getReq();
-                const existingPlatforms = await self.find(req, {}).toCount();
-
-                if (existingPlatforms === 0) {
+                
                     const defaultPlatforms = [
                         {
                             title: 'AWS',
@@ -136,9 +136,6 @@ module.exports = {
                     }
 
                     self.apos.util.log('Default platforms inserted.');
-                } else {
-                    self.apos.util.log('Platforms already exist, skipping default insertion.');
-                }
             }
         }
     }
