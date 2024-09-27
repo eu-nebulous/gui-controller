@@ -91,11 +91,8 @@ module.exports = {
                 label: 'Endpoint'
             },
             identityVersion: {
-                type: 'select',
+                type: 'string',
                 label: 'Identity Version',
-                choices: [
-                    {'label': 'v3', value: '3'}
-                ]
             },
             defaultNetwork: {
                 type: 'string',
