@@ -831,8 +831,7 @@ module.exports = {
 
                 return docCopy;
             },
-
-
+            
             isValidStateTransition(currentState, newState) {
                 const validTransitions = {
                     'draft': ['valid'],
@@ -905,6 +904,30 @@ module.exports = {
                 })
                 return Promise.all(promises)
             },
+
+            async changeStatusWithDelay(uuid, newStatus, delayMs) {
+                // Wait for the delay
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+
+                // Update the status of the application to 'draft'
+                try {
+                    const existingApp = await self.apos.doc.db.findOne({ uuid });
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    existingApp.status = newStatus;
+
+                    await self.apos.doc.db.updateOne(
+                        { uuid },
+                        { $set: { status: newStatus } }
+                    );
+
+                    console.log(`Status changed to ${newStatus} for application with uuid: ${uuid}`);
+                } catch (error) {
+                    console.error(`Error changing status: ${error.message}`);
+                }
+            },
         };
     },
     apiRoutes(self) {
@@ -921,48 +944,126 @@ module.exports = {
                             throw self.apos.error('required', 'Validation failed', { error: errorResponses });
                         }
                 },
-                 async ':uuid/uuid/deploy' (req) {
+                //This is the refactored code, but have to test it again
+                // async ':uuid/uuid/deploy' (req) {
+                //
+                //      const uuid = req.params.uuid;
+                //
+                //      // let errorResponses = self.validateDocument(updateData, true) || [];
+                //      // if (errorResponses.length > 0) {
+                //      //     throw self.apos.error('required', 'Validation failed', { error: errorResponses });
+                //      // }
+                //      const currentUser = req.user;
+                //      const adminOrganization = currentUser.organization;
+                //
+                //     const existingApp = await self.apos.doc.find(req, { uuid: uuid, organization: adminOrganization }).toObject();
+                //      if (!existingApp) {
+                //          throw self.apos.error('notfound', 'Application not found');
+                //      }
+                //
+                //      try {
+                //
+                //          existingApp.status = 'deploying';
+                //         
+                //          await self.updateWithRegions(req, existingApp);
+                //
+                //          await exn.application_dsl(uuid, kubevela.json(existingApp), metric_model.yaml(existingApp));
+                //
+                //          // Use the ORM to update the document
+                //          await self.apos.doc.update(req, existingApp);
+                //
+                //          await self.emit('afterDeploy', req, existingApp);
+                //
+                //          await self.apos.doc.publish(req, existingApp);
+                //
+                //          return { status: 'deploying', message: 'Application deployed successfully', updatedResource: existingApp };
+                //
+                //      } catch (error) {
+                //          throw self.apos.error(error.name, error.message);
+                //      }
+                //
+                // },
+                async ':uuid/uuid/deploy' (req) {
 
-                     const uuid = req.params.uuid;
+                    const uuid = req.params.uuid;
 
-                     // let errorResponses = self.validateDocument(updateData, true) || [];
-                     // if (errorResponses.length > 0) {
-                     //     throw self.apos.error('required', 'Validation failed', { error: errorResponses });
-                     // }
-                     const currentUser = req.user;
-                     const adminOrganization = currentUser.organization;
+                    // let errorResponses = self.validateDocument(updateData, true) || [];
+                    // if (errorResponses.length > 0) {
+                    //     throw self.apos.error('required', 'Validation failed', { error: errorResponses });
+                    // }
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
 
-                     const existingApp = await self.apos.doc.db.findOne({ uuid: uuid , organization:adminOrganization });
-                     if (!existingApp) {
-                         throw self.apos.error('notfound', 'Application not found');
-                     }
+                    const existingApp = await self.apos.doc.db.findOne({ uuid: uuid , organization:adminOrganization });
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
 
-                     try {
+                    try {
 
-                         const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
-                         const updatedAppItem = updatedApp.pop();
+                        const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
+                        const updatedAppItem = updatedApp.pop();
 
-                         //TODO This is very ugly
-                         await self.updateWithRegions(req,updatedAppItem)
+                        //TODO This is very ugly
+                        await self.updateWithRegions(req,updatedAppItem)
 
-                         await exn.application_dsl(uuid,
-                             kubevela.json(updatedAppItem), metric_model.yaml(updatedAppItem)
-                         );
+                        await exn.application_dsl(uuid,
+                            kubevela.json(updatedAppItem), metric_model.yaml(updatedAppItem)
+                        );
 
-                         //TODO refactor to use apostrophe CMS ORM
-                         await self.apos.doc.db.updateOne(
-                             { uuid: uuid },
-                             { $set: {'status':'deploying'} }
-                         );
-                         if(updatedApp.length > 0 ){
-                             await self.emit('afterDeploy', req, updatedApp[0]);
-                         }
-                         return { status: 'deployed', message: 'Application deployed successfully', updatedResource: updatedApp };
+                        //TODO refactor to use apostrophe CMS ORM
+                        await self.apos.doc.db.updateOne(
+                            { uuid: uuid },
+                            { $set: {'status':'deploying'} }
+                        );
+                        if(updatedApp.length > 0 ){
+                            await self.emit('afterDeploy', req, updatedApp[0]);
+                        }
+                        return { status: 'deployed', message: 'Application deployed successfully', updatedResource: updatedApp };
 
-                     } catch (error) {
-                         throw self.apos.error(error.name, error.message);
-                     }
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
+                    }
 
+                },
+                async ':uuid/uuid/undeploy' (req) {
+                    const uuid = req.params.uuid;
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
+                    // Fetch the existing application document
+                    const existingApp = await self.apos.doc.find(req, { uuid: uuid, organization: adminOrganization }).toObject();
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    try {
+                        existingApp.status = 'undeploying';
+
+                        await self.apos.doc.update(req, existingApp);
+
+                        //await exn.application_undeploy(uuid);
+
+                        //const newUuid = uuidv4();
+                        // existingApp.status = 'draft';
+                        // existingApp.uuid = newUuid;
+                        //
+                        // await self.apos.doc.update(req, existingApp);
+
+                        //await self.emit('afterUndeploy', req, { ...existingApp, uuid: newUuid });
+
+                        
+                        //Fake timer in order to bypass the exn/sal
+                        const response = { status: 'undeploying', message: 'Application undeployment started', updatedResource: existingApp };
+
+                        self.changeStatusWithDelay(uuid, 'draft', 5000);
+
+                        return { response, message: 'Application undeployed successfully' };
+                        
+                        
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
+                    }
                 },
                 async ':uuid/uuid/duplicate' (req) {
                     const { uuid } = req.params;
@@ -1002,7 +1103,29 @@ module.exports = {
                     const newDoc = await self.insert(req, newDocData);
                     
                     return newDoc;
+                },
+                async 'status' (req) {
+                    const { uuids } = req.body;
+
+                    if (!self.apos.permission.can(req, 'view')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+
+                    try {
+                        const currentUser = req.user;
+                        const adminOrganization = currentUser.organization;
+
+                        const apps = await self
+                            .find(req,{ uuid: { $in: uuids }, organization: adminOrganization })
+                            .project({ uuid: 1, status: 1 })
+                            .toArray();
+
+                        return apps;
+                    } catch (error) {
+                        throw self.apos.error('error', error.message);
+                    }
                 }
+            
             },
             get: {
                 async all(req) {
