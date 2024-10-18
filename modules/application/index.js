@@ -1020,7 +1020,7 @@ module.exports = {
                             await self.emit('afterDeploy', req, updatedApp[0]);
                         }
                         return { status: 'deployed', message: 'Application deployed successfully', updatedResource: updatedApp };
-
+                        
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
