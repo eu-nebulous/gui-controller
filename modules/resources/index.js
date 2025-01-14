@@ -62,6 +62,14 @@ module.exports = {
                 label: 'Valid Instance Types',
                 type: 'string',
             },
+            scope:{
+                label: 'Scope',
+                type: 'string',
+            },
+            project:{
+                label: 'Project',
+                type: 'string',
+            },
             securityGroup: {
                 type: 'string',
                 label: 'Security Group'
@@ -134,6 +142,10 @@ module.exports = {
             network: {
                 label: 'Network',
                 fields: ['defaultNetwork', 'endpoint', 'subnet']
+            },
+            openstack: {
+                label: 'Openstack',
+                fields: ['scope', 'project']
             },
             security: {
                 label: 'Security',
