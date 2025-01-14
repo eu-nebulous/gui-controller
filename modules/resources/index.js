@@ -9,7 +9,7 @@ const projection = {
     organization: 1,
     platform: 1,
     regions: 1,
-    excludedInstanceTypes: 1,
+    validInstanceTypes: 1,
     subnet: 1,
     endpoint: 1,
     identityVersion: 1,
@@ -58,8 +58,16 @@ module.exports = {
                 type: 'string',
                 default: ''
             },
-            excludedInstanceTypes:{
-                label: 'Excluded Instance Types',
+            validInstanceTypes:{
+                label: 'Valid Instance Types',
+                type: 'string',
+            },
+            scope:{
+                label: 'Scope',
+                type: 'string',
+            },
+            project:{
+                label: 'Project',
                 type: 'string',
             },
             securityGroup: {
@@ -129,11 +137,15 @@ module.exports = {
         group: {
             basics: {
                 label: 'Details',
-                fields: ['title', 'uuid', '_platform', 'regions', 'excludedInstanceTypes', 'identityVersion']
+                fields: ['title', 'uuid', '_platform', 'regions', 'validInstanceTypes', 'identityVersion']
             },
             network: {
                 label: 'Network',
                 fields: ['defaultNetwork', 'endpoint', 'subnet']
+            },
+            openstack: {
+                label: 'Openstack',
+                fields: ['scope', 'project']
             },
             security: {
                 label: 'Security',
@@ -158,7 +170,7 @@ module.exports = {
         function convertEmptyStringsToNull(doc) {
             const fieldsToCheck = [
                 'regions',
-                'excludedInstanceTypes',
+                'validInstanceTypes',
                 'securityGroup',
                 'subnet',
                 'endpoint',
