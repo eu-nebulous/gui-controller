@@ -12,6 +12,8 @@ const projection = {
     validInstanceTypes: 1,
     subnet: 1,
     endpoint: 1,
+    scope: 1,
+    project: 1,
     identityVersion: 1,
     credentials: 1,
     defaultNetwork: 1,
