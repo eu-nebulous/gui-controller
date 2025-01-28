@@ -896,9 +896,11 @@ module.exports = {
             async updateWithRegions(req, doc) {
                 let promises = []
                 doc.resources.forEach((r)=>{
+
                     promises.push(new Promise(async (resolve)=>{
                         const resource = await self.apos.modules['resources'].find(req, {'uuid': r.uuid}).toObject();
                         r._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
+                        r._valid_instance_types = resource.validInstanceTypes || [];
                         resolve()
                     }))
                 })
