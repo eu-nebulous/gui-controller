@@ -2,8 +2,6 @@ require('dotenv').config();
 const container = require('rhea');
 const jsesc = require('jsesc');
 const {v4: uuidv4} = require("uuid");
-const kubevela = require("./../../lib/kubevela");
-const metric_model = require("./../../lib/metric_model");
 const _ = require('lodash');
 
 const application_projection = {

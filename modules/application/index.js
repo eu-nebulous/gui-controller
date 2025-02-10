@@ -865,7 +865,6 @@ module.exports = {
             async getDLS(req, uuid) {
                 const updatedApp = await self.find(req, {uuid: uuid}).project(projection).toArray();
                 const doc = updatedApp.pop();
-
                 if(!doc){
                     return {
                         'json': {},
@@ -978,7 +977,6 @@ module.exports = {
                             {uuid: uuid},
                             {$set: {'status': 'deploying'}}
                         );
-
                         return {
                             status: 'deploying',
                             message: 'Application is being deployed',
@@ -1007,15 +1005,9 @@ module.exports = {
                         existingApp.status = 'undeploying';
                         await self.apos.doc.update(req, existingApp);
 
-                        //Fake timer in order to bypass the exn/sal
                         const response = {
                             status: 'undeploying',
                             message: 'Application undeployment started',
-                            updatedResource: existingApp
-                        };
-                        return {
-                            status: 'undeploying',
-                            message: 'Application is being un-deployed',
                             updatedResource: existingApp
                         };
 
