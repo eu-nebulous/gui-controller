@@ -1,6 +1,5 @@
 const {v4: uuidv4} = require('uuid');
 const Joi = require('joi');
-const exn = require('../../lib/exn');
 const _ = require('lodash');
 
 const projection = {
@@ -358,9 +357,9 @@ module.exports = {
                         }
 
 
-                        await exn.register_cloud(doc)
+                        await self.apos.modules.exn.register_cloud(doc)
                         await new Promise(resolve => setTimeout(resolve, 10000));
-                        const message = await exn.get_cloud_candidates()
+                        const message = await self.apos.modules.exn.get_cloud_candidates()
                         return _.map(JSON.parse(message.body), (r) => {
                             return {
                                 id: r.nodeId,
