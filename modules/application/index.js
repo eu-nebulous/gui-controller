@@ -1,14 +1,12 @@
-const { v4: uuidv4 } = require('uuid');
+const {v4: uuidv4} = require('uuid');
 const Joi = require('joi');
 const yaml = require('yaml');
 const slugify = require('slugify');
 const mathutils = require('../../lib/math');
 const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
-const exn = require('../../lib/exn')
-const _=require('lodash')
+const _ = require('lodash')
 
-const container = require('rhea');
 let connection;
 let application_new_sender;
 let application_update_sender;
@@ -155,8 +153,8 @@ module.exports = {
                             type: 'select',
                             label: 'Type',
                             choices: [
-                                { label: 'Integer', value: 'int' },
-                                { label: 'Double', value: 'double' }
+                                {label: 'Integer', value: 'int'},
+                                {label: 'Double', value: 'double'}
                             ]
                         },
                         minValue: {
@@ -192,8 +190,8 @@ module.exports = {
                             type: 'select',
                             label: 'Level',
                             choices: [
-                                { label: 'Global', value: 'global' },
-                                { label: 'Components', value: 'components' }
+                                {label: 'Global', value: 'global'},
+                                {label: 'Components', value: 'components'}
                             ],
                             def: 'global'
                         },
@@ -436,7 +434,7 @@ module.exports = {
         group: {
             basics: {
                 label: 'Details',
-                fields: ['title', 'uuid','status', 'content', 'variables','environmentVariables']
+                fields: ['title', 'uuid', 'status', 'content', 'variables', 'environmentVariables']
             },
             resources: {
                 label: 'Resources',
@@ -514,24 +512,23 @@ module.exports = {
             //             }
             //     }
             // }
-            afterDeploy:{
-              async deployApplication(req,doc,options){
-                  console.log("After deployment",doc.uuid)
-                  if(connection){
-                      application_update_sender.send({
-                          "body":{"uuid":doc.uuid},
-                          "message_annotations":{
-                              "application":doc.uuid
-                          }
-                      });
-                      application_dsl_generic.send({body:{}, "message_annotations":{
-                              "application":doc.uuid
-                          }});
-                  }
-              }
+            afterDeploy: {
+                async deployApplication(req, doc, options) {
+                    console.log("After deployment", doc.uuid)
+                    if (connection) {
+                        await self.apos.exn.application_updated(doc.uuid)
+                        await self.apos.exn.send_application_dsl(doc.uuid)
+
+                        application_dsl_generic.send({
+                            body: {}, "message_annotations": {
+                                "application": doc.uuid
+                            }
+                        });
+                    }
+                }
             },
-            afterUpdate:{
-                async postMessages(req,doc,option){
+            afterUpdate: {
+                async postMessages(req, doc, option) {
                     console.log("After update", doc.uuid);
 
                     //produce application.json
@@ -544,16 +541,18 @@ module.exports = {
                     // eu.nebulouscloud.ui.application.new
 
                     // eu.nebulouscloud.ui.application.updated
-                    if(connection){
-                        application_update_sender.send({
-                            "body":{"uuid":doc.uuid},
-                            "message_annotations":{
-                                "application":doc.uuid
+                    if (connection) {
+                        await self.apos.exn.application_update_sender.send({
+                            "body": {"uuid": doc.uuid},
+                            "message_annotations": {
+                                "application": doc.uuid
                             }
                         });
-                        application_dsl_generic.send({body:{}, "message_annotations":{
-                                "application":doc.uuid
-                            }});
+                        await self.apos.exn.application_dsl_generic.send({
+                            body: {}, "message_annotations": {
+                                "application": doc.uuid
+                            }
+                        });
                     }
                 }
             }
@@ -576,9 +575,9 @@ module.exports = {
                 .required()
                 .pattern(new RegExp('^[a-zA-Z0-9_]{3,40}$'))
                 .messages({
-                'string.empty': "Please enter a name.",
-                'any.required': "Name is a required field."
-            }),
+                    'string.empty': "Please enter a name.",
+                    'any.required': "Name is a required field."
+                }),
             value: Joi.string()
                 .required()
                 .messages({
@@ -776,7 +775,7 @@ module.exports = {
                 'string.base': 'Function Name must be a string.',
                 'any.required': 'Function Name is required.'
             }),
-            functionType: Joi.string().valid('maximize', 'constant','minimize').insensitive().required().messages({
+            functionType: Joi.string().valid('maximize', 'constant', 'minimize').insensitive().required().messages({
                 'string.base': 'Function Type must be a string.',
                 'any.required': 'Function Type is required.',
                 'any.only': 'Function Type must be either "Maximize" , "Constant" or "Minimize.'
@@ -808,9 +807,9 @@ module.exports = {
                         if (metric.level === 'components' && Array.isArray(metric.components)) {
                             body.metrics[index].components = metric.components.map(component => {
                                 if (typeof component === 'string') {
-                                    return { componentName: component };
+                                    return {componentName: component};
                                 }
-                                return component; 
+                                return component;
                             });
                         }
                     });
@@ -818,7 +817,7 @@ module.exports = {
                 Object.assign(doc, body);
             },
             convertComponentsToFrontendFormat(doc) {
-                const docCopy = { ...doc };
+                const docCopy = {...doc};
 
                 if (docCopy.metrics && Array.isArray(docCopy.metrics)) {
                     docCopy.metrics = docCopy.metrics.map(metric => {
@@ -831,7 +830,7 @@ module.exports = {
 
                 return docCopy;
             },
-            
+
             isValidStateTransition(currentState, newState) {
                 const validTransitions = {
                     'draft': ['valid'],
@@ -852,7 +851,7 @@ module.exports = {
                 const validateArray = (dataArray, schema, arrayName) => {
                     if (Array.isArray(dataArray)) {
                         dataArray.forEach((item, index) => {
-                            const { error } = schema.validate(item);
+                            const {error} = schema.validate(item);
                             if (error) {
                                 error.details.forEach(detail => {
                                     let message = detail.message.replace(/\"/g, "");
@@ -868,7 +867,7 @@ module.exports = {
                     }
                 };
                 const validateField = (data, schema, fieldName) => {
-                    const { error } = schema.validate(data);
+                    const {error} = schema.validate(data);
                     if (error) {
                         error.details.forEach(detail => {
                             let message = detail.message.replace(/\"/g, "");
@@ -895,9 +894,9 @@ module.exports = {
             },
             async updateWithRegions(req, doc) {
                 let promises = []
-                doc.resources.forEach((r)=>{
+                doc.resources.forEach((r) => {
 
-                    promises.push(new Promise(async (resolve)=>{
+                    promises.push(new Promise(async (resolve) => {
                         const resource = await self.apos.modules['resources'].find(req, {'uuid': r.uuid}).toObject();
                         r._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
                         r._valid_instance_types = resource.validInstanceTypes || [];
@@ -907,13 +906,34 @@ module.exports = {
                 return Promise.all(promises)
             },
 
+            async getDLS(req, uuid) {
+                const updatedApp = await self.find(req, {uuid: uuid}).project(projection).toArray();
+                const doc = updatedApp.pop();
+
+                if(!doc){
+                    return {
+                        'json': {},
+                        'metricModel': {},
+                    }
+                }
+
+                await self.updateWithRegions(req, doc)
+                const docJson = kubevela.json(doc)
+                const metricModel = metric_model.yaml(doc)
+
+                return {
+                    'json':docJson,
+                    'metricModel':metricModel,
+                }
+            },
+
             async changeStatusWithDelay(uuid, newStatus, delayMs) {
                 // Wait for the delay
                 await new Promise(resolve => setTimeout(resolve, delayMs));
 
                 // Update the status of the application to 'draft'
                 try {
-                    const existingApp = await self.apos.doc.db.findOne({ uuid });
+                    const existingApp = await self.apos.doc.db.findOne({uuid});
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -921,8 +941,8 @@ module.exports = {
                     existingApp.status = newStatus;
 
                     await self.apos.doc.db.updateOne(
-                        { uuid },
-                        { $set: { status: newStatus } }
+                        {uuid},
+                        {$set: {status: newStatus}}
                     );
 
                     console.log(`Status changed to ${newStatus} for application with uuid: ${uuid}`);
@@ -935,16 +955,16 @@ module.exports = {
     apiRoutes(self) {
         return {
             post: {
-                async validate (req) {
+                async validate(req) {
                     if (!self.apos.permission.can(req, 'edit')) {
                         throw self.apos.error('forbidden', 'Insufficient permissions');
                     }
 
-                        const doc = req.body;
-                        let errorResponses = self.validateDocument(doc) || [];
-                        if (errorResponses.length > 0) {
-                            throw self.apos.error('required', 'Validation failed', { error: errorResponses });
-                        }
+                    const doc = req.body;
+                    let errorResponses = self.validateDocument(doc) || [];
+                    if (errorResponses.length > 0) {
+                        throw self.apos.error('required', 'Validation failed', {error: errorResponses});
+                    }
                 },
                 //This is the refactored code, but have to test it again
                 // async ':uuid/uuid/deploy' (req) {
@@ -985,7 +1005,7 @@ module.exports = {
                 //      }
                 //
                 // },
-                async ':uuid/uuid/deploy' (req) {
+                async ':uuid/uuid/deploy'(req) {
 
                     const uuid = req.params.uuid;
 
@@ -996,7 +1016,7 @@ module.exports = {
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
-                    const existingApp = await self.apos.doc.db.findOne({ uuid: uuid , organization:adminOrganization });
+                    const existingApp = await self.apos.doc.db.findOne({uuid: uuid, organization: adminOrganization});
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1004,40 +1024,36 @@ module.exports = {
                     try {
 
                         const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
-                        const updatedAppItem = updatedApp.pop();
-
-                        //TODO This is very ugly
-                        await self.updateWithRegions(req,updatedAppItem)
-
-                        await exn.application_dsl(uuid,
-                            kubevela.json(updatedAppItem), metric_model.yaml(updatedAppItem)
-                        );
-
-                        //TODO refactor to use apostrophe CMS ORM
+                        await self.apos.modules.exn.send_application_dsl(uuid)
                         await self.apos.doc.db.updateOne(
-                            { uuid: uuid },
-                            { $set: {'status':'deploying'} }
+                            {uuid: uuid},
+                            {$set: {'status': 'deploying'}}
                         );
-                        if(updatedApp.length > 0 ){
+
+                        if (updatedApp.length > 0) {
                             await self.emit('afterDeploy', req, updatedApp[0]);
                         }
 
-                        return { status: 'deploying', message: 'Application is being deployed', updatedResource: updatedApp };
+                        return {
+                            status: 'deploying',
+                            message: 'Application is being deployed',
+                            updatedResource: updatedApp
+                        };
 
-  
-                        
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
-
                 },
-                async ':uuid/uuid/undeploy' (req) {
+                async ':uuid/uuid/undeploy'(req) {
                     const uuid = req.params.uuid;
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
                     // Fetch the existing application document
-                    const existingApp = await self.apos.doc.find(req, { uuid: uuid, organization: adminOrganization }).toObject();
+                    const existingApp = await self.apos.doc.find(req, {
+                        uuid: uuid,
+                        organization: adminOrganization
+                    }).toObject();
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1057,28 +1073,32 @@ module.exports = {
 
                         //await self.emit('afterUndeploy', req, { ...existingApp, uuid: newUuid });
 
-                        
+
                         //Fake timer in order to bypass the exn/sal
-                        const response = { status: 'undeploying', message: 'Application undeployment started', updatedResource: existingApp };
+                        const response = {
+                            status: 'undeploying',
+                            message: 'Application undeployment started',
+                            updatedResource: existingApp
+                        };
 
                         self.changeStatusWithDelay(uuid, 'draft', 5000);
 
-                        return { response, message: 'Application undeployed successfully' };
-                        
-                        
+                        return {response, message: 'Application undeployed successfully'};
+
+
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
                 },
-                async ':uuid/uuid/duplicate' (req) {
-                    const { uuid } = req.params;
-                    const { title } = req.body;
+                async ':uuid/uuid/duplicate'(req) {
+                    const {uuid} = req.params;
+                    const {title} = req.body;
 
                     if (!self.apos.permission.can(req, 'edit')) {
                         throw self.apos.error('forbidden', 'Insufficient permissions');
                     }
 
-                    const existingApp = await self.apos.doc.db.findOne({ uuid: uuid });
+                    const existingApp = await self.apos.doc.db.findOne({uuid: uuid});
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1106,11 +1126,11 @@ module.exports = {
                     };
 
                     const newDoc = await self.insert(req, newDocData);
-                    
+
                     return newDoc;
                 },
-                async 'status' (req) {
-                    const { uuids } = req.body;
+                async 'status'(req) {
+                    const {uuids} = req.body;
 
                     if (!self.apos.permission.can(req, 'view')) {
                         throw self.apos.error('forbidden', 'Insufficient permissions');
@@ -1121,8 +1141,8 @@ module.exports = {
                         const adminOrganization = currentUser.organization;
 
                         const apps = await self
-                            .find(req,{ uuid: { $in: uuids }, organization: adminOrganization })
-                            .project({ uuid: 1, status: 1 })
+                            .find(req, {uuid: {$in: uuids}, organization: adminOrganization})
+                            .project({uuid: 1, status: 1})
                             .toArray();
 
                         return apps;
@@ -1130,7 +1150,7 @@ module.exports = {
                         throw self.apos.error('error', error.message);
                     }
                 }
-            
+
             },
             get: {
                 async all(req) {
@@ -1163,7 +1183,10 @@ module.exports = {
                     const adminOrganization = currentUser.organization;
 
                     try {
-                        const doc = await self.find(req, { uuid: uuid , organization:adminOrganization}).project(projection).toObject();
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
                         if (!doc) {
                             throw self.apos.error('notfound', 'Application not found');
                         }
@@ -1190,7 +1213,10 @@ module.exports = {
                     const adminOrganization = currentUser.organization;
 
                     try {
-                        const doc = await self.find(req, { uuid: uuid , organization:adminOrganization}).project(projection).toObject();
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
                         if (!doc) {
                             throw self.apos.error('notfound', 'Application not found');
                         }
@@ -1218,7 +1244,10 @@ module.exports = {
                     const adminOrganization = currentUser.organization;
 
                     try {
-                        const doc = await self.find(req, { uuid: uuid, organization: adminOrganization }).project(projection).toObject();
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
                         if (!doc) {
                             throw self.apos.error('notfound', 'Application not found');
                         }
@@ -1252,7 +1281,7 @@ module.exports = {
                         throw self.apos.error('invalid', 'UUID is required');
                     }
 
-                    const doc = await self.find(req, { uuid: uuid , organization:adminOrganization }).toObject();
+                    const doc = await self.find(req, {uuid: uuid, organization: adminOrganization}).toObject();
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1267,7 +1296,10 @@ module.exports = {
                     // }
 
                     try {
-                        const docs = await self.apos.db.collection('aposDocs').find({ uuid: uuid, organization:adminOrganization }).toArray();
+                        const docs = await self.apos.db.collection('aposDocs').find({
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).toArray();
 
                         if (!docs || docs.length === 0) {
                             throw self.apos.error('notfound', 'Document not found');
@@ -1278,10 +1310,10 @@ module.exports = {
                         }
 
                         for (const doc of docs) {
-                            await self.apos.db.collection('aposDocs').deleteOne({ _id: doc._id });
+                            await self.apos.db.collection('aposDocs').deleteOne({_id: doc._id});
                         }
 
-                        return { status: 'success', message: 'Application deleted successfully' };
+                        return {status: 'success', message: 'Application deleted successfully'};
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
@@ -1300,7 +1332,7 @@ module.exports = {
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
-                    const existingApp = await self.apos.doc.db.findOne({ uuid: uuid , organization:adminOrganization });
+                    const existingApp = await self.apos.doc.db.findOne({uuid: uuid, organization: adminOrganization});
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1315,18 +1347,25 @@ module.exports = {
 
                     try {
                         //await self.convertComponentsHelper(updateData);
-                        
+
                         await self.apos.doc.db.updateOne(
-                            { uuid: uuid },
-                            { $set: updateData }
+                            {uuid: uuid},
+                            {$set: updateData}
                         );
 
                         //TODO refactor to use apostrophe CMS ORM
-                        const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
-                        if(updatedApp.length > 0 ){
+                        const updatedApp = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toArray();
+                        if (updatedApp.length > 0) {
                             await self.emit('afterUpdate', req, updatedApp[0]);
                         }
-                        return { status: 'success', message: 'Application partially updated successfully', updatedResource: updatedApp };
+                        return {
+                            status: 'success',
+                            message: 'Application partially updated successfully',
+                            updatedResource: updatedApp
+                        };
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }

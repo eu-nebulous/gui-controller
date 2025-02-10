@@ -8,7 +8,8 @@ require('apostrophe')({
     "userapi": {},
     "resources": {},
     "platforms": {},
-    "policies": {}
+    "policies": {},
+    "exn": {}
   }
 });
 
