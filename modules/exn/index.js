@@ -78,17 +78,8 @@ container.on('message', async (context) => {
         await aposSelf.reply_application_user_request(context.message.body.token,context.message.correlation_id);
     }
 
-    if (context.message.address === "eu.nebulouscloud.eu.user.get") {
-
-        const message = {
-            to: "eu.nebulouscloud.eu.user.get." + context.message.body.nonce,
-            message_annotations: {application: context.message.body.appId},
-            body: {
-                username: "[your application nonce]", organization: "[your application id]", role: "[role]"
-            }
-        }
-        console.log("Send ", message)
-        sender_ui_application_user_info.send(message)
+    if (context.message.to === "topic://eu.nebulouscloud.optimiser.controller.app_state") {
+        await aposSelf.update_application_state(context.message.application_properties.application, context.message.body);
     }
 
     if (context.message.correlation_id in correlations) {
@@ -109,6 +100,7 @@ container.on('connection_open', function (context) {
     context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.delete.reply')
     context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.nodecandidate.get.reply')
     context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.node.create.reply')
+    context.connection.open_receiver('topic://eu.nebulouscloud.optimiser.controller.app_state')
     context.connection.open_receiver('topic://eu.nebulouscloud.eu.user.get')
     context.connection.open_receiver('topic://eu.nebulouscloud.eu.app.get')
 
@@ -170,6 +162,10 @@ module.exports = {
         return {
             reply_application_dsl_request,
             reply_application_user_request,
+            async update_application_state(uuid,body){
+                const req = aposSelf.apos.task.getReq()
+                aposSelf.apos.modules.application.updateState(req, uuid, body.state.toLowerCase())
+            },
             async send_application_dsl(uuid) {
                 new Promise(async (resolve, reject) => {
                     const req = aposSelf.apos.task.getReq()

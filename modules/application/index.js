@@ -509,25 +509,8 @@ module.exports = {
             // }
             afterDeploy: {
                 async deployApplication(req, doc, options) {
-                    console.log("After deployment", doc.uuid)
                     await self.apos.exn.application_updated(doc.uuid)
                     await self.apos.exn.send_application_dsl(doc.uuid)
-                }
-            },
-            afterUpdate: {
-                async postMessages(req, doc, option) {
-                    console.log("After update", doc.uuid);
-                    await self.apos.exn.application_update_sender.send({
-                        "body": {"uuid": doc.uuid},
-                        "message_annotations": {
-                            "application": doc.uuid
-                        }
-                    });
-                    await self.apos.exn.application_dsl_generic.send({
-                        body: {}, "message_annotations": {
-                            "application": doc.uuid
-                        }
-                    });
                 }
             }
         };
@@ -900,25 +883,18 @@ module.exports = {
                 }
             },
 
-            async changeStatusWithDelay(uuid, newStatus, delayMs) {
-                // Wait for the delay
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-
-                // Update the status of the application to 'draft'
+            async updateState(req, uuid, state) {
                 try {
                     const existingApp = await self.apos.doc.db.findOne({uuid});
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
-
-                    existingApp.status = newStatus;
-
+                    existingApp.status = state;
                     await self.apos.doc.db.updateOne(
                         {uuid},
-                        {$set: {status: newStatus}}
+                        {$set: {status: state}}
                     );
-
-                    console.log(`Status changed to ${newStatus} for application with uuid: ${uuid}`);
+                    console.log(`Status changed to ${state} for application with uuid: ${uuid}`);
                 } catch (error) {
                     console.error(`Error changing status: ${error.message}`);
                 }
@@ -1003,10 +979,6 @@ module.exports = {
                             {$set: {'status': 'deploying'}}
                         );
 
-                        if (updatedApp.length > 0) {
-                            await self.emit('afterDeploy', req, updatedApp[0]);
-                        }
-
                         return {
                             status: 'deploying',
                             message: 'Application is being deployed',
@@ -1033,19 +1005,7 @@ module.exports = {
 
                     try {
                         existingApp.status = 'undeploying';
-
                         await self.apos.doc.update(req, existingApp);
-
-                        //await exn.application_undeploy(uuid);
-
-                        //const newUuid = uuidv4();
-                        // existingApp.status = 'draft';
-                        // existingApp.uuid = newUuid;
-                        //
-                        // await self.apos.doc.update(req, existingApp);
-
-                        //await self.emit('afterUndeploy', req, { ...existingApp, uuid: newUuid });
-
 
                         //Fake timer in order to bypass the exn/sal
                         const response = {
@@ -1053,11 +1013,11 @@ module.exports = {
                             message: 'Application undeployment started',
                             updatedResource: existingApp
                         };
-
-                        self.changeStatusWithDelay(uuid, 'draft', 5000);
-
-                        return {response, message: 'Application undeployed successfully'};
-
+                        return {
+                            status: 'undeploying',
+                            message: 'Application is being un-deployed',
+                            updatedResource: existingApp
+                        };
 
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
