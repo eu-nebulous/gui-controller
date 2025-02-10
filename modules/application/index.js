@@ -7,11 +7,6 @@ const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
 const _ = require('lodash')
 
-let connection;
-let application_new_sender;
-let application_update_sender;
-let application_dsl_generic;
-let application_dsl_metric;
 const projection = {
     title: 1,
     uuid: 1,
@@ -515,45 +510,24 @@ module.exports = {
             afterDeploy: {
                 async deployApplication(req, doc, options) {
                     console.log("After deployment", doc.uuid)
-                    if (connection) {
-                        await self.apos.exn.application_updated(doc.uuid)
-                        await self.apos.exn.send_application_dsl(doc.uuid)
-
-                        application_dsl_generic.send({
-                            body: {}, "message_annotations": {
-                                "application": doc.uuid
-                            }
-                        });
-                    }
+                    await self.apos.exn.application_updated(doc.uuid)
+                    await self.apos.exn.send_application_dsl(doc.uuid)
                 }
             },
             afterUpdate: {
                 async postMessages(req, doc, option) {
                     console.log("After update", doc.uuid);
-
-                    //produce application.json
-
-
-                    //product metric model
-
-                    //post to activemq
-
-                    // eu.nebulouscloud.ui.application.new
-
-                    // eu.nebulouscloud.ui.application.updated
-                    if (connection) {
-                        await self.apos.exn.application_update_sender.send({
-                            "body": {"uuid": doc.uuid},
-                            "message_annotations": {
-                                "application": doc.uuid
-                            }
-                        });
-                        await self.apos.exn.application_dsl_generic.send({
-                            body: {}, "message_annotations": {
-                                "application": doc.uuid
-                            }
-                        });
-                    }
+                    await self.apos.exn.application_update_sender.send({
+                        "body": {"uuid": doc.uuid},
+                        "message_annotations": {
+                            "application": doc.uuid
+                        }
+                    });
+                    await self.apos.exn.application_dsl_generic.send({
+                        body: {}, "message_annotations": {
+                            "application": doc.uuid
+                        }
+                    });
                 }
             }
         };
@@ -895,8 +869,7 @@ module.exports = {
             async updateWithRegions(req, doc) {
                 let promises = []
                 doc.resources.forEach((r) => {
-
-                    promises.push(new Promise(async (resolve) => {
+                    promises.push(new Promise(async (resolve)=>{
                         const resource = await self.apos.modules['resources'].find(req, {'uuid': r.uuid}).toObject();
                         r._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
                         r._valid_instance_types = resource.validInstanceTypes || [];
