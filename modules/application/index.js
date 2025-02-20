@@ -388,6 +388,10 @@ module.exports = {
                 label: 'Utility Functions',
                 fields: {
                     add: {
+                        selected: {
+                            type: 'boolean',
+                            label: 'Function Selected'
+                        },
                         functionName: {
                             type: 'string',
                             label: 'Function Name'
@@ -398,13 +402,18 @@ module.exports = {
                             choices: [
                                 {label: 'Maximize', value: 'maximize'},
                                 {label: 'Minimize', value: 'minimize'},
-                                {label: 'Constant', value: 'constant'}
+                                {label: 'Constant', value: 'constant'},
+                                {label: 'Constraint', value: 'constraint'}
                             ]
                         },
                         functionExpression: {
                             type: 'string',
                             label: 'Function Expression',
                             textarea: true
+                        },
+                        functionConstraintOperator: {
+                            type: 'string',
+                            label: 'Constraints Operator',
                         },
                         functionExpressionVariables: {
                             type: 'array',
@@ -474,39 +483,7 @@ module.exports = {
                     }
                 },
             },
-            beforeUpdate: {
-                async convertComponents(req, doc) {
-                    self.convertComponentsToBackendFormat(req.body, doc);
-                }
-            },
-            // afterInsert:{
-            //     async postMessages(req,doc,option){
-            //         console.log("Application created " + doc.uuid)
-            //
-            //         //produce application.json
-            //
-            //
-            //         //product metric model
-            //
-            //         //post to activemq
-            //         application_new_sender.send({
-            //             "body":{"uuid":doc.uuid},
-            //         });
-            //         application_dsl_generic.send({body:{}});
-            //
-            //     }
-            // },
-            // afterSave: {
-            //         async processAppAfterSave(req, doc, options) {
-            //             try {
-            //                 console.log("UUID:", doc.uuid);
-            //                 const applicationData = await self.getApplicationData(doc.uuid);
-            //                 return applicationData;
-            //             } catch (error) {
-            //                 console.error('Error', error);
-            //             }
-            //     }
-            // }
+
             afterDeploy: {
                 async deployApplication(req, doc, options) {
                     await self.apos.exn.application_updated(doc.uuid)
@@ -732,10 +709,10 @@ module.exports = {
                 'string.base': 'Function Name must be a string.',
                 'any.required': 'Function Name is required.'
             }),
-            functionType: Joi.string().valid('maximize', 'constant', 'minimize').insensitive().required().messages({
+            functionType: Joi.string().valid('maximize', 'constant', 'minimize','constraint').insensitive().required().messages({
                 'string.base': 'Function Type must be a string.',
                 'any.required': 'Function Type is required.',
-                'any.only': 'Function Type must be either "Maximize" , "Constant" or "Minimize.'
+                'any.only': 'Function Type must be either "Maximize" , "Constant", "Constant" or "Minimize.'
             }),
             functionExpression: Joi.string().trim().required().messages({
                 'string.base': 'Function Expression must be a string.',
@@ -786,21 +763,6 @@ module.exports = {
                 }
 
                 return docCopy;
-            },
-
-            isValidStateTransition(currentState, newState) {
-                const validTransitions = {
-                    'draft': ['valid'],
-                    'valid': ['deploying'],
-                    'deploying': ['running'],
-                    'running': ['draft']
-                };
-
-                if (validTransitions[currentState].indexOf(newState) === -1) {
-                    return false;
-                }
-
-                return true;
             },
             validateDocument(doc) {
                 let errorResponses = [];
@@ -876,6 +838,7 @@ module.exports = {
                 const docJson = kubevela.json(doc)
                 const metricModel = metric_model.yaml(doc)
 
+
                 return {
                     'json':docJson,
                     'metricModel':metricModel,
@@ -914,45 +877,6 @@ module.exports = {
                         throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                     }
                 },
-                //This is the refactored code, but have to test it again
-                // async ':uuid/uuid/deploy' (req) {
-                //
-                //      const uuid = req.params.uuid;
-                //
-                //      // let errorResponses = self.validateDocument(updateData, true) || [];
-                //      // if (errorResponses.length > 0) {
-                //      //     throw self.apos.error('required', 'Validation failed', { error: errorResponses });
-                //      // }
-                //      const currentUser = req.user;
-                //      const adminOrganization = currentUser.organization;
-                //
-                //     const existingApp = await self.apos.doc.find(req, { uuid: uuid, organization: adminOrganization }).toObject();
-                //      if (!existingApp) {
-                //          throw self.apos.error('notfound', 'Application not found');
-                //      }
-                //
-                //      try {
-                //
-                //          existingApp.status = 'deploying';
-                //         
-                //          await self.updateWithRegions(req, existingApp);
-                //
-                //          await exn.application_dsl(uuid, kubevela.json(existingApp), metric_model.yaml(existingApp));
-                //
-                //          // Use the ORM to update the document
-                //          await self.apos.doc.update(req, existingApp);
-                //
-                //          await self.emit('afterDeploy', req, existingApp);
-                //
-                //          await self.apos.doc.publish(req, existingApp);
-                //
-                //          return { status: 'deploying', message: 'Application deployed successfully', updatedResource: existingApp };
-                //
-                //      } catch (error) {
-                //          throw self.apos.error(error.name, error.message);
-                //      }
-                //
-                // },
                 async ':uuid/uuid/deploy'(req) {
 
                     const uuid = req.params.uuid;
@@ -1256,36 +1180,17 @@ module.exports = {
 
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
-
                     const existingApp = await self.apos.doc.db.findOne({uuid: uuid, organization: adminOrganization});
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
-                    const currentState = existingApp.status;
-                    const newState = updateData.status;
-
-                    //Validation of the state of Application
-                    // if (!self.isValidStateTransition(currentState, newState)) {
-                    //     throw self.apos.error('invalid', 'Invalid state transition');
-                    // }
-
 
                     try {
-                        //await self.convertComponentsHelper(updateData);
 
-                        await self.apos.doc.db.updateOne(
-                            {uuid: uuid},
-                            {$set: updateData}
-                        );
-
-                        //TODO refactor to use apostrophe CMS ORM
-                        const updatedApp = await self.find(req, {
-                            uuid: uuid,
-                            organization: adminOrganization
-                        }).project(projection).toArray();
-                        if (updatedApp.length > 0) {
-                            await self.emit('afterUpdate', req, updatedApp[0]);
-                        }
+                        const app = await self.find(req, {uuid:uuid}).toObject();
+                        self.convertComponentsToBackendFormat(req.body, app);
+                        const updatedApp  = await self.update(req, app);
+                        await self.publish(req, app);
                         return {
                             status: 'success',
                             message: 'Application partially updated successfully',
