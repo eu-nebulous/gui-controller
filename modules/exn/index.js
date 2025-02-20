@@ -28,21 +28,6 @@ const connection_options = {
     'reconnect': true
 }
 
-console.log(process.env.EXN_DISABLE)
-
-if (process.env.EXN_DISABLE == "True") {
-    console.error("Disable connection");
-    return
-}
-
-if (!connection_options.port || !connection_options.host) {
-    console.error("No connection option provided for EXN skipping asynchronous messaging");
-    return
-} else {
-    const connection = container.connect(connection_options);
-}
-
-
 let sender_sal_nodecandidate_get;
 let sender_sal_cloud_get;
 let sender_sal_cloud_post;
@@ -66,62 +51,7 @@ let sender_ui_application_info;
 
 const correlations = {}
 let aposSelf = null;
-container.on('message', async (context) => {
 
-    if (context.message.to === "topic://eu.nebulouscloud.eu.app.get") {
-        await aposSelf.reply_application_dsl_request(context.message.body.appId,context.message.correlation_id);
-    }
-
-    if (context.message.to === "topic://eu.nebulouscloud.eu.user.get") {
-        await aposSelf.reply_application_user_request(context.message.body.token,context.message.correlation_id);
-    }
-
-    if (context.message.to === "topic://eu.nebulouscloud.optimiser.controller.app_state") {
-        await aposSelf.update_application_state(context.message.application_properties.application, context.message.body);
-    }
-
-    if (context.message.correlation_id in correlations) {
-        if (context.message.body.metaData['status'] >= 400) {
-            correlations[context.message.correlation_id]['reject'](context.message.body['message'])
-        } else {
-            correlations[context.message.correlation_id]['resolve'](context.message.body)
-        }
-    }
-})
-
-
-container.on('connection_open', function (context) {
-
-    console.log("Connected ", context.container.id);
-    context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.get.reply')
-    context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.create.reply')
-    context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.delete.reply')
-    context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.nodecandidate.get.reply')
-    context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.node.create.reply')
-    context.connection.open_receiver('topic://eu.nebulouscloud.optimiser.controller.app_state')
-    context.connection.open_receiver('topic://eu.nebulouscloud.eu.user.get')
-    context.connection.open_receiver('topic://eu.nebulouscloud.eu.app.get')
-
-    sender_sal_nodecandidate_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.nodecandidate.get');
-    sender_sal_cloud_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.get');
-    sender_sal_cloud_post = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.create');
-    sender_sal_cloud_delete = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.delete');
-    sender_sal_node_post = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.node.create');
-
-    sender_ui_application_new = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.new');
-    sender_ui_application_updated = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.updated');
-    sender_ui_application_deploy = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.deploy');
-    sender_ui_application_undeploy = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.undeploy');
-    sender_ui_application_dsl_json = context.connection.open_sender('topic://eu.nebulouscloud.ui.dsl.generic');
-    sender_ui_application_dsl_metric = context.connection.open_sender('topic://eu.nebulouscloud.ui.dsl.metric_model');
-
-    sender_ui_policies_rule_upsert = context.connection.open_sender('topic://eu.nebulouscloud.ui.policies.rule.upsert');
-    sender_ui_policies_model_upsert = context.connection.open_sender('topic://eu.nebulouscloud.ui.policies.model.upsert');
-
-    sender_ui_application_user_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.user.get.reply');
-    sender_ui_application_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.app.get.reply');
-
-});
 
 
 const reply_application_dsl_request = async (uuid,correlation_id) => {
@@ -155,6 +85,86 @@ const reply_application_user_request = async (uuid,correlation_id) => {
 }
 
 module.exports = {
+    handlers(self){
+        return {
+            'apostrophe:ready':{
+                async setupListener(self,options){
+                    console.log("ready")
+                    container.on('message', async (context) => {
+
+                        if (context.message.to === "topic://eu.nebulouscloud.eu.app.get") {
+                            await aposSelf.reply_application_dsl_request(context.message.body.appId,context.message.correlation_id);
+                        }
+
+                        if (context.message.to === "topic://eu.nebulouscloud.eu.user.get") {
+                            await aposSelf.reply_application_user_request(context.message.body.token,context.message.correlation_id);
+                        }
+
+                        if (context.message.to === "topic://eu.nebulouscloud.optimiser.controller.app_state") {
+                            await aposSelf.update_application_state(context.message.application_properties.application, context.message.body);
+                        }
+
+                        if (context.message.correlation_id in correlations) {
+                            if (context.message.body.metaData['status'] >= 400) {
+                                correlations[context.message.correlation_id]['reject'](context.message.body['message'])
+                            } else {
+                                correlations[context.message.correlation_id]['resolve'](context.message.body)
+                            }
+                        }
+                    })
+                    container.on('connection_open', function (context) {
+
+                        console.log("Connected ", context.container.id);
+                        context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.get.reply')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.create.reply')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.cloud.delete.reply')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.nodecandidate.get.reply')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.node.create.reply')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.optimiser.controller.app_state')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.eu.user.get')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.eu.app.get')
+
+                        sender_sal_nodecandidate_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.nodecandidate.get');
+                        sender_sal_cloud_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.get');
+                        sender_sal_cloud_post = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.create');
+                        sender_sal_cloud_delete = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.delete');
+                        sender_sal_node_post = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.node.create');
+
+                        sender_ui_application_new = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.new');
+                        sender_ui_application_updated = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.updated');
+                        sender_ui_application_deploy = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.deploy');
+                        sender_ui_application_undeploy = context.connection.open_sender('topic://eu.nebulouscloud.ui.application.undeploy');
+                        sender_ui_application_dsl_json = context.connection.open_sender('topic://eu.nebulouscloud.ui.dsl.generic');
+                        sender_ui_application_dsl_metric = context.connection.open_sender('topic://eu.nebulouscloud.ui.dsl.metric_model');
+
+                        sender_ui_policies_rule_upsert = context.connection.open_sender('topic://eu.nebulouscloud.ui.policies.rule.upsert');
+                        sender_ui_policies_model_upsert = context.connection.open_sender('topic://eu.nebulouscloud.ui.policies.model.upsert');
+
+                        sender_ui_application_user_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.user.get.reply');
+                        sender_ui_application_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.app.get.reply');
+
+                    });
+
+                    if (process.env.EXN_DISABLE == "True") {
+                        console.error("EXN connection disabled");
+                        return
+                    }
+
+                    if (!connection_options.port || !connection_options.host) {
+                        console.error("No connection option provided for EXN skipping asynchronous messaging");
+                        return
+                    } else {
+                        const connection = container.connect(connection_options);
+                    }
+
+
+                }
+
+            }
+        }
+
+    },
+
     methods(self) {
         aposSelf = self
         return {
