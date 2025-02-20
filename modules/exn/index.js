@@ -92,11 +92,11 @@ module.exports = {
                     console.log("ready")
                     container.on('message', async (context) => {
 
-                        if (context.message.to === "topic://eu.nebulouscloud.eu.app.get") {
+                        if (context.message.to === "topic://eu.nebulouscloud.eu.ui.app.get") {
                             await aposSelf.reply_application_dsl_request(context.message.body.appId,context.message.correlation_id);
                         }
 
-                        if (context.message.to === "topic://eu.nebulouscloud.eu.user.get") {
+                        if (context.message.to === "topic://eu.nebulouscloud.eu.ui.user.get") {
                             await aposSelf.reply_application_user_request(context.message.body.token,context.message.correlation_id);
                         }
 
@@ -121,8 +121,8 @@ module.exports = {
                         context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.nodecandidate.get.reply')
                         context.connection.open_receiver('topic://eu.nebulouscloud.exn.sal.node.create.reply')
                         context.connection.open_receiver('topic://eu.nebulouscloud.optimiser.controller.app_state')
-                        context.connection.open_receiver('topic://eu.nebulouscloud.eu.user.get')
-                        context.connection.open_receiver('topic://eu.nebulouscloud.eu.app.get')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.eu.ui.user.get')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.eu.ui.app.get')
 
                         sender_sal_nodecandidate_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.nodecandidate.get');
                         sender_sal_cloud_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.get');
@@ -140,8 +140,8 @@ module.exports = {
                         sender_ui_policies_rule_upsert = context.connection.open_sender('topic://eu.nebulouscloud.ui.policies.rule.upsert');
                         sender_ui_policies_model_upsert = context.connection.open_sender('topic://eu.nebulouscloud.ui.policies.model.upsert');
 
-                        sender_ui_application_user_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.user.get.reply');
-                        sender_ui_application_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.app.get.reply');
+                        sender_ui_application_user_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.ui.user.get.reply');
+                        sender_ui_application_info = context.connection.open_sender('topic://eu.nebulouscloud.eu.ui.app.get.reply');
 
                     });
 
