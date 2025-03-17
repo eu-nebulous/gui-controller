@@ -57,9 +57,9 @@ let aposSelf = null;
 const reply_application_dsl_request = async (uuid,correlation_id) => {
 
     const req = aposSelf.apos.task.getReq()
-    const dsl = await aposSelf.apos.modules.application.getDLS(req, uuid)
+    const dsl = await aposSelf.apos.modules.application.getDSL(req, uuid)
     const message = {
-        to: sender_ui_application_dsl_json.options.target.address,
+        to: sender_ui_application_info.options.target.address,
         correlation_id: correlation_id,
         message_annotations: {application: uuid},
         application_properties: {application: uuid},
@@ -93,11 +93,15 @@ module.exports = {
                     container.on('message', async (context) => {
 
                         if (context.message.to === "topic://eu.nebulouscloud.ui.app.get") {
+                            console.log("Received topic://eu.nebulouscloud.ui.app.get ", context.message, "with correlation id ",context.message.correlation_id )
                             await aposSelf.reply_application_dsl_request(context.message.body.appId,context.message.correlation_id);
+                            console.log("Received topic://eu.nebulouscloud.ui.app.get ", context.message, "with correlation id ",context.message.correlation_id," ... replied" )
                         }
 
                         if (context.message.to === "topic://eu.nebulouscloud.ui.user.get") {
+                            console.log("Received topic://eu.nebulouscloud.ui.user.get ", context.message, "with correlation id ",context.message.correlation_id )
                             await aposSelf.reply_application_user_request(context.message.body.token,context.message.correlation_id);
+                            console.log("Received topic://eu.nebulouscloud.ui.user.get ", context.message, "with correlation id ",context.message.correlation_id," ... replied" )
                         }
 
                         if (context.message.to === "topic://eu.nebulouscloud.optimiser.controller.app_state") {
@@ -177,7 +181,7 @@ module.exports = {
             async send_application_dsl(uuid) {
                 new Promise(async (resolve, reject) => {
                     const req = aposSelf.apos.task.getReq()
-                    const dsl = await aposSelf.apos.modules.application.getDLS(req, uuid)
+                    const dsl = await aposSelf.apos.modules.application.getDSL(req, uuid)
 
                     const correlation_id = uuidv4()
                     correlations[correlation_id] = {

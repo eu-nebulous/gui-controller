@@ -824,8 +824,8 @@ module.exports = {
                 return Promise.all(promises)
             },
 
-            async getDLS(req, uuid) {
-                const updatedApp = await self.find(req, {uuid: uuid}).project(projection).toArray();
+            async getDSL(req, uuid) {
+                const updatedApp = await self.find(req, {uuid: uuid, published: true}).project(projection).toArray();
                 const doc = updatedApp.pop();
                 if(!doc){
                     return {
