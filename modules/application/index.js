@@ -812,20 +812,47 @@ module.exports = {
                 }
             },
             async updateWithRegions(req, doc) {
-                let promises = []
-                doc.resources.forEach((r) => {
-                    promises.push(new Promise(async (resolve)=>{
-                        const resource = await self.apos.modules['resources'].find(req, {'uuid': r.uuid}).toObject();
-                        r._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
-                        r._valid_instance_types = resource.validInstanceTypes || [];
-                        resolve()
-                    }))
-                })
-                return Promise.all(promises)
-            },
 
+                return new Promise(async (resolve) => {
+
+                    const resource_uuids = doc.resources.map(r => { return r.uuid})
+                    const resources = await self.apos.modules.resources
+                        .find(req, {'uuid': {$in: resource_uuids}})
+                        .project({
+                            title: 1,
+                            uuid: 1,
+                            organization: 1,
+                            platform: 1,
+                            regions: 1,
+                            validInstanceTypes: 1,
+                            subnet: 1,
+                            endpoint: 1,
+                            scope: 1,
+                            project: 1,
+                            identityVersion: 1,
+                            credentials: 1,
+                            defaultNetwork: 1,
+                            securityGroup: 1,
+                            sshCredentials: 1,
+                            _platform: 1
+                        })
+                        .toArray();
+
+                    resources.forEach((resource) => {
+                        resource.regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
+                        resource._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
+                        resource.validInstanceTypes = resource.validInstanceTypes || [];
+                        resource._valid_instance_types = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
+                        ['_edit','_publish','_delete','_create','metaType','type','_id'].forEach(key => {
+                            delete resource[key]
+                        })
+                    })
+                    doc.resources = resources;
+                    return resolve();
+                })
+            },
             async getDSL(req, uuid) {
-                const updatedApp = await self.find(req, {uuid: uuid, published: true}).project(projection).toArray();
+                const updatedApp = await self.find(req, {uuid: uuid}).project(projection).toArray();
                 const doc = updatedApp.pop();
                 if(!doc){
                     return {
@@ -1013,10 +1040,7 @@ module.exports = {
                     try {
                         const filters = {};
                         filters.organization = adminOrganization;
-
-
-                        const docs = await self.find(req, filters).project(projection).toArray();
-                        return docs;
+                        return await self.find(req, filters).project(projection).toArray();
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
