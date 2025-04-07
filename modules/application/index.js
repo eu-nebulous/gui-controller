@@ -847,7 +847,14 @@ module.exports = {
                             delete resource[key]
                         })
                     })
-                    doc.resources = resources;
+
+                    doc.resources.forEach(r => {
+                        const found = resources.find((tr)=> tr.uuid === r.uuid)
+                        if(found) {
+                           _.extend(r,found)
+                        }
+                    })
+
                     return resolve();
                 })
             },

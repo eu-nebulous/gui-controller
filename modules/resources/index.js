@@ -35,6 +35,14 @@ const credentialsSchema = Joi.object({
         'string.empty': 'Credentials: Secret is required.',
         'any.required': 'Credentials: Secret is a required field.'
     }),
+    subscriptionId: Joi.when('_platform', {
+        is: 'AZURE',
+        then: Joi.string().required().messages({
+            'string.empty': 'Subscription ID: When the platform is Azure, the Subscription ID is required.',
+            'any.required': 'Subscription ID: When the platform is Azure, the Subscription ID is required.'
+        }),
+        otherwise: Joi.optional()
+    })
 }).unknown().options({abortEarly: false});
 
 module.exports = {
@@ -59,15 +67,15 @@ module.exports = {
                 type: 'string',
                 default: ''
             },
-            validInstanceTypes:{
+            validInstanceTypes: {
                 label: 'Valid Instance Types',
                 type: 'string',
             },
-            scope:{
+            scope: {
                 label: 'Scope',
                 type: 'string',
             },
-            project:{
+            project: {
                 label: 'Project',
                 type: 'string',
             },
@@ -125,6 +133,10 @@ module.exports = {
                             type: 'string',
                             label: 'Secret',
                             textarea: true,
+                        },
+                        subscriptionId: {
+                            type: 'string',
+                            label: 'Subscription ID',
                         },
                         domain: {
                             type: 'string',
@@ -278,7 +290,11 @@ module.exports = {
                     }
                 };
                 validateField(doc, resourcesSchema);
+
+                // add the platform to allow for conditional ifs
+                doc.credentials._platform = doc._platform[0].provider_name;
                 validateField(doc.credentials, credentialsSchema);
+
             }
         }
     },
