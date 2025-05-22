@@ -6,6 +6,7 @@ const mathutils = require('../../lib/math');
 const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
 const _ = require('lodash')
+const OpenAI = require("openai");
 
 const projection = {
     title: 1,
@@ -709,7 +710,7 @@ module.exports = {
                 'string.base': 'Function Name must be a string.',
                 'any.required': 'Function Name is required.'
             }),
-            functionType: Joi.string().valid('maximize', 'constant', 'minimize','constraint').insensitive().required().messages({
+            functionType: Joi.string().valid('maximize', 'constant', 'minimize', 'constraint').insensitive().required().messages({
                 'string.base': 'Function Type must be a string.',
                 'any.required': 'Function Type is required.',
                 'any.only': 'Function Type must be either "Maximize" , "Constant", "Constant" or "Minimize.'
@@ -815,7 +816,9 @@ module.exports = {
 
                 return new Promise(async (resolve) => {
 
-                    const resource_uuids = doc.resources.map(r => { return r.uuid})
+                    const resource_uuids = doc.resources.map(r => {
+                        return r.uuid
+                    })
                     const resources = await self.apos.modules.resources
                         .find(req, {'uuid': {$in: resource_uuids}})
                         .project({
@@ -843,15 +846,15 @@ module.exports = {
                         resource._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
                         resource.validInstanceTypes = resource.validInstanceTypes || [];
                         resource._valid_instance_types = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
-                        ['_edit','_publish','_delete','_create','metaType','type','_id'].forEach(key => {
+                        ['_edit', '_publish', '_delete', '_create', 'metaType', 'type', '_id'].forEach(key => {
                             delete resource[key]
                         })
                     })
 
                     doc.resources.forEach(r => {
-                        const found = resources.find((tr)=> tr.uuid === r.uuid)
-                        if(found) {
-                           _.extend(r,found)
+                        const found = resources.find((tr) => tr.uuid === r.uuid)
+                        if (found) {
+                            _.extend(r, found)
                         }
                     })
 
@@ -861,7 +864,7 @@ module.exports = {
             async getDSL(req, uuid) {
                 const updatedApp = await self.find(req, {uuid: uuid}).project(projection).toArray();
                 const doc = updatedApp.pop();
-                if(!doc){
+                if (!doc) {
                     return {
                         'json': {},
                         'metricModel': {},
@@ -874,8 +877,8 @@ module.exports = {
 
 
                 return {
-                    'json':docJson,
-                    'metricModel':metricModel,
+                    'json': docJson,
+                    'metricModel': metricModel,
                 }
             },
 
@@ -911,6 +914,45 @@ module.exports = {
                         throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                     }
                 },
+                async 'generate'(req) {
+                    if (!self.apos.permission.can(req, 'edit')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+                    const contents = req.body
+
+                    if (!contents || !contents.prompt) {
+                        return {
+                            'success': false,
+                            'answer': ''
+                        }
+                    }
+
+                    const aiPrompt = await self.apos.modules.prompt.find(req, {'title': 'default'})
+                        .limit(1).toObject()
+
+                    if (!aiPrompt) {
+                        console.error('No default prompt found');
+                        return {
+                            'success': false,
+                            'answer': ''
+                        }
+                    }
+
+                    const client = new OpenAI({
+                        'apiKey': process.env.OPENAI_KEY
+                    });
+
+                    const response = await client.responses.create({
+                        model: aiPrompt.model,
+                        input: aiPrompt.content+"---"+contents.prompt+"*****",
+                    });
+
+                    return {
+                        'success': true,
+                        'answer': response.output_text
+                    }
+
+                },
                 async ':uuid/uuid/deploy'(req) {
 
                     const uuid = req.params.uuid;
@@ -929,7 +971,10 @@ module.exports = {
 
                     try {
 
-                        const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
+                        const updatedApp = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toArray();
                         await self.apos.modules.exn.send_application_dsl(uuid)
                         await self.apos.doc.db.updateOne(
                             {uuid: uuid},
@@ -1218,9 +1263,9 @@ module.exports = {
 
                     try {
 
-                        const app = await self.find(req, {uuid:uuid}).toObject();
+                        const app = await self.find(req, {uuid: uuid}).toObject();
                         self.convertComponentsToBackendFormat(req.body, app);
-                        const updatedApp  = await self.update(req, app);
+                        const updatedApp = await self.update(req, app);
                         await self.publish(req, app);
                         return {
                             status: 'success',

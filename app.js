@@ -9,6 +9,7 @@ require('apostrophe')({
     "resources": {},
     "platforms": {},
     "policies": {},
+    "prompt": {},
     "exn": {}
   }
 });
