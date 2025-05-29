@@ -1,6 +1,5 @@
 const {v4: uuidv4} = require('uuid');
 const Joi = require('joi');
-const exn = require('../../lib/exn');
 const _ = require('lodash');
 
 const projection = {
@@ -9,9 +8,11 @@ const projection = {
     organization: 1,
     platform: 1,
     regions: 1,
-    excludedInstanceTypes: 1,
+    validInstanceTypes: 1,
     subnet: 1,
     endpoint: 1,
+    scope: 1,
+    project: 1,
     identityVersion: 1,
     credentials: 1,
     defaultNetwork: 1,
@@ -34,6 +35,14 @@ const credentialsSchema = Joi.object({
         'string.empty': 'Credentials: Secret is required.',
         'any.required': 'Credentials: Secret is a required field.'
     }),
+    subscriptionId: Joi.when('_platform', {
+        is: 'AZURE',
+        then: Joi.string().required().messages({
+            'string.empty': 'Subscription ID: When the platform is Azure, the Subscription ID is required.',
+            'any.required': 'Subscription ID: When the platform is Azure, the Subscription ID is required.'
+        }),
+        otherwise: Joi.optional()
+    })
 }).unknown().options({abortEarly: false});
 
 module.exports = {
@@ -58,8 +67,16 @@ module.exports = {
                 type: 'string',
                 default: ''
             },
-            excludedInstanceTypes:{
-                label: 'Excluded Instance Types',
+            validInstanceTypes: {
+                label: 'Valid Instance Types',
+                type: 'string',
+            },
+            scope: {
+                label: 'Scope',
+                type: 'string',
+            },
+            project: {
+                label: 'Project',
                 type: 'string',
             },
             securityGroup: {
@@ -117,6 +134,10 @@ module.exports = {
                             label: 'Secret',
                             textarea: true,
                         },
+                        subscriptionId: {
+                            type: 'string',
+                            label: 'Subscription ID',
+                        },
                         domain: {
                             type: 'string',
                             label: 'Domain',
@@ -129,11 +150,15 @@ module.exports = {
         group: {
             basics: {
                 label: 'Details',
-                fields: ['title', 'uuid', '_platform', 'regions', 'excludedInstanceTypes', 'identityVersion']
+                fields: ['title', 'uuid', '_platform', 'regions', 'validInstanceTypes', 'identityVersion']
             },
             network: {
                 label: 'Network',
                 fields: ['defaultNetwork', 'endpoint', 'subnet']
+            },
+            openstack: {
+                label: 'Openstack',
+                fields: ['scope', 'project']
             },
             security: {
                 label: 'Security',
@@ -158,7 +183,7 @@ module.exports = {
         function convertEmptyStringsToNull(doc) {
             const fieldsToCheck = [
                 'regions',
-                'excludedInstanceTypes',
+                'validInstanceTypes',
                 'securityGroup',
                 'subnet',
                 'endpoint',
@@ -265,7 +290,11 @@ module.exports = {
                     }
                 };
                 validateField(doc, resourcesSchema);
+
+                // add the platform to allow for conditional ifs
+                doc.credentials._platform = doc._platform[0].provider_name;
                 validateField(doc.credentials, credentialsSchema);
+
             }
         }
     },
@@ -344,9 +373,9 @@ module.exports = {
                         }
 
 
-                        await exn.register_cloud(doc)
+                        await self.apos.modules.exn.register_cloud(doc)
                         await new Promise(resolve => setTimeout(resolve, 10000));
-                        const message = await exn.get_cloud_candidates()
+                        const message = await self.apos.modules.exn.get_cloud_candidates()
                         return _.map(JSON.parse(message.body), (r) => {
                             return {
                                 id: r.nodeId,
