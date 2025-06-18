@@ -944,7 +944,9 @@ module.exports = {
 
                     const response = await client.responses.create({
                         model: aiPrompt.model,
-                        input: aiPrompt.content+"---"+contents.prompt+"*****",
+                        input: aiPrompt.content
+                                +"The contents of the application description can be found between the ``` ``` in the following section"
+                                +"```"+contents.prompt+"```",
                     });
 
                     return {
