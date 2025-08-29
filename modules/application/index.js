@@ -7,6 +7,7 @@ const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
 const _ = require('lodash')
 const OpenAI = require("openai");
+const uuid = require('uuid').v4;
 
 const projection = {
     title: 1,
@@ -384,6 +385,30 @@ module.exports = {
                 label: 'SLO',
                 textarea: true,
             },
+            slCreations: {
+                type: 'string',
+                label: 'slCreations',
+                textarea: true,
+                default: JSON.stringify( {
+                  nodeKey: uuid(),
+                  isComposite: true,
+                  condition: "AND",
+                  not: false,
+                  children: []
+                })
+            },
+            slMetaConstraints: {
+                type: 'string',
+                label: 'Meta Constraints',
+                textarea: true,
+                default: JSON.stringify( {
+                  nodeKey: uuid(),
+                  isComposite: true,
+                  condition: "AND",
+                  not: false,
+                  children: []
+                })
+            },
             utilityFunctions: {
                 type: 'array',
                 label: 'Utility Functions',
@@ -455,7 +480,7 @@ module.exports = {
             },
             metricsGroup: {
                 label: 'Metrics',
-                fields: ['metrics', 'sloViolations']
+                fields: ['metrics', 'sloViolations','slCreations','slMetaConstraints']
             },
             expressionEditor: {
                 label: 'Expression Editor',
