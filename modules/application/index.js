@@ -7,7 +7,6 @@ const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
 const _ = require('lodash')
 const OpenAI = require("openai");
-const uuid = require('uuid').v4;
 
 const projection = {
     title: 1,
@@ -22,6 +21,8 @@ const projection = {
     templates: 1,
     metrics: 1,
     sloViolations: 1,
+    slCreations: 1,
+    slMetaConstraints: 1,
     utilityFunctions: 1
 };
 
@@ -30,6 +31,7 @@ module.exports = {
     extend: '@apostrophecms/piece-type',
     options: {
         label: 'Application',
+        autopublish: true,
     },
     fields: {
         add: {
@@ -91,6 +93,10 @@ module.exports = {
                         }
                     }
                 }
+            },
+            policy:{
+                type: 'string',
+                label: 'Policy',
             },
             resources: {
                 type: 'array',
@@ -387,27 +393,13 @@ module.exports = {
             },
             slCreations: {
                 type: 'string',
-                label: 'slCreations',
-                textarea: true,
-                default: JSON.stringify( {
-                  nodeKey: uuid(),
-                  isComposite: true,
-                  condition: "AND",
-                  not: false,
-                  children: []
-                })
+                label: 'SL',
+                textarea: true
             },
             slMetaConstraints: {
                 type: 'string',
                 label: 'Meta Constraints',
-                textarea: true,
-                default: JSON.stringify( {
-                  nodeKey: uuid(),
-                  isComposite: true,
-                  condition: "AND",
-                  not: false,
-                  children: []
-                })
+                textarea: true
             },
             utilityFunctions: {
                 type: 'array',
@@ -480,7 +472,11 @@ module.exports = {
             },
             metricsGroup: {
                 label: 'Metrics',
-                fields: ['metrics', 'sloViolations','slCreations','slMetaConstraints']
+                fields: ['metrics', 'sloViolations', 'slCreations', 'slMetaConstraints']
+            },
+            securityGroup: {
+                label: 'Security',
+                fields: ['policy']
             },
             expressionEditor: {
                 label: 'Expression Editor',
@@ -529,7 +525,19 @@ module.exports = {
         }).messages({
             'string.yaml': "Content must be in valid YAML format.",
         });
-
+        const policySchema = Joi.string().optional().allow(null).allow('').custom((value, helpers) => {
+            try {
+                if(value ===''){
+                    return ''
+                }
+                JSON.parse(value);
+                return value;
+            } catch (err) {
+                return helpers.error('string.policy');
+            }
+        }).messages({
+            'string.policy': "Content must be in valid JSON format.",
+        });
         const environmenSchema = Joi.object({
             name: Joi.string()
                 .required()
@@ -825,6 +833,7 @@ module.exports = {
                 };
 
                 validateField(doc.content, contentSchema, 'content');
+                validateField(doc.policy, policySchema, 'policy');
                 validateArray(doc.variables, variableSchema, 'variables');
                 validateArray(doc.resources, resourcesSchema, 'resources');
                 validateArray(doc.parameters, parameterSchema, 'parameters');
@@ -939,6 +948,20 @@ module.exports = {
                         throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                     }
                 },
+                async validateConstraints(req) {
+                    if (!self.apos.permission.can(req, 'edit')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+                    const slMetaContraints = req.body;
+                    const valid = await new Promise((resolve) => {
+                        setTimeout(() => {
+                            const randomBoolean = Math.random() < 0.5;
+                            resolve(randomBoolean);
+                        }, 5000);
+                    });
+                    console.log("Returning valid for ",slMetaContraints,valid);
+                    return valid;
+                },
                 async 'generate'(req) {
                     if (!self.apos.permission.can(req, 'edit')) {
                         throw self.apos.error('forbidden', 'Insufficient permissions');
@@ -970,8 +993,8 @@ module.exports = {
                     const response = await client.responses.create({
                         model: aiPrompt.model,
                         input: aiPrompt.content
-                                +"The contents of the application description can be found between the ``` ``` in the following section"
-                                +"```"+contents.prompt+"```",
+                            + "The contents of the application description can be found between the ``` ``` in the following section"
+                            + "```" + contents.prompt + "```",
                     });
 
                     return {
@@ -1071,6 +1094,8 @@ module.exports = {
                         parameters: _.cloneDeep(existingApp.parameters),
                         metrics: _.cloneDeep(existingApp.metrics),
                         sloViolations: _.cloneDeep(existingApp.sloViolations),
+                        slCreations: _.cloneDeep(existingApp.slCreations),
+                        slMetaConstraints: _.cloneDeep(existingApp.slMetaConstraints),
                         utilityFunctions: _.cloneDeep(existingApp.utilityFunctions),
 
                         slug: `${existingApp.slug}-copy-${Date.now()}`,
@@ -1079,7 +1104,6 @@ module.exports = {
                         updatedAt: new Date(),
                         _id: undefined,
                     };
-
                     const newDoc = await self.insert(req, newDocData);
 
                     return newDoc;
@@ -1293,7 +1317,6 @@ module.exports = {
                         const app = await self.find(req, {uuid: uuid}).toObject();
                         self.convertComponentsToBackendFormat(req.body, app);
                         const updatedApp = await self.update(req, app);
-                        await self.publish(req, app);
                         return {
                             status: 'success',
                             message: 'Application partially updated successfully',
