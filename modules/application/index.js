@@ -20,6 +20,7 @@ const projection = {
     parameters: 1,
     templates: 1,
     metrics: 1,
+    policy: 1,
     sloViolations: 1,
     slCreations: 1,
     slMetaConstraints: 1,
