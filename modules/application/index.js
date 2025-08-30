@@ -7,7 +7,6 @@ const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
 const _ = require('lodash')
 const OpenAI = require("openai");
-const uuid = require('uuid').v4;
 
 const projection = {
     title: 1,
