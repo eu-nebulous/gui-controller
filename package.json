@@ -41,6 +41,7 @@
   "author": "Apostrophe Technologies, Inc.",
   "license": "MIT",
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0",
     "@johmun/vue-tags-input": "^2.1.0",
     "apostrophe": "^3.61.1",
     "dotenv": "^16.4.5",
