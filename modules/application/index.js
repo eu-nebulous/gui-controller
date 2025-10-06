@@ -1129,36 +1129,7 @@ module.exports = {
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
-                },
-                async ':uuid/monitor/metrics'(req) {
-                    const {uuids} = req.body;
-
-                    if (!self.apos.permission.can(req, 'view')) {
-                        throw self.apos.error('forbidden', 'Insufficient permissions');
-                    }
-
-                    try {
-                        const currentUser = req.user;
-                        const adminOrganization = currentUser.organization;
-                        const apps = await self
-                            .find(req, {uuid: {$in: uuids}, organization: adminOrganization})
-                            .project({uuid: 1, status: 1})
-                            .toArray();
-
-                        // Fetch the existing application document
-                        const existingApp = await self.apos.doc.find(req, {
-                            uuid: uuid,
-                            organization: adminOrganization
-                        }).toObject();
-                        if (!existingApp) {
-                            throw self.apos.error('notfound', 'Application not found');
-                        }
-
-                        return apps;
-                    } catch (error) {
-                        throw self.apos.error('error', error.message);
-                    }
-                },
+                }
 
             },
             get: {
@@ -1276,240 +1247,60 @@ module.exports = {
                         throw self.apos.error(error.name, error.message);
                     }
                 },
-                async ':uuid/monitor/data'(req) {
-                    const uuid = req.params.uuid;
+                async ':uuid/monitor/metrics'(req) {
 
+                    const uuid = req.params.uuid;
                     if (!self.apos.permission.can(req, 'view')) {
                         throw self.apos.error('forbidden', 'Insufficient permissions');
                     }
 
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
+                     const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
+                    if (!doc) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    if (doc.organization !== adminOrganization) {
+                        throw self.apos.error('forbidden', 'Access denied');
+                    }
+
                     try {
+                        return await self.apos.modules.influxdb.getAvailableMeasurements(doc.uuid)
+                    } catch (error) {
+                        throw self.apos.error('error', error.message);
+                    }
+                },
+                async ':uuid/monitor/data'(req) {
 
-                        // Utility functions
-                        const generateTimeLabels = (count) => {
-                            return Array.from({length: count}, (_, i) => {
-                                const date = new Date();
-                                date.setHours(date.getHours() - (count - i - 1));
-                                return date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
-                            });
-                        };
+                    const uuid = req.params.uuid;
+                    if (!self.apos.permission.can(req, 'view')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
 
-                        const randomBetween = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-                        const generateRandomArray = (length, min, max) => {
-                            return Array.from({length}, () => randomBetween(min, max));
-                        };
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
 
-                        // Pastel color palette
-                        const pastelColors = {
-                            primary: "#B8D4E3",
-                            secondary: "#D4B8E3",
-                            success: "#B8E3D4",
-                            warning: "#E3D4B8",
-                            danger: "#E3B8D4",
-                            info: "#B8C7E3",
-                            indigo: "#C7B8E3",
-                            teal: "#B8E3E0",
-                            yellow: "#E3E0B8",
-                            rose: "#E3B8C7"
-                        };
+                     const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
+                    if (!doc) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
 
-                        // Generate latency metric with random values
-                        const generateLatencyMetric = () => {
-                            const dataPoints = generateRandomArray(12, 40, 95);
-                            const avgLatency = Math.round(dataPoints.reduce((a, b) => a + b, 0) / dataPoints.length);
+                    if (doc.organization !== adminOrganization) {
+                        throw self.apos.error('forbidden', 'Access denied');
+                    }
 
-                            return {
-                                title: "System Latency",
-                                summary: `${avgLatency}ms avg`,
-                                type: "line",
-                                config: {
-                                    labels: generateTimeLabels(dataPoints.length),
-                                    datasets: [{
-                                        label: "Latency (ms)",
-                                        data: dataPoints,
-                                        borderWidth: 2,
-                                        borderColor: pastelColors.primary,
-                                        backgroundColor: "transparent",
-                                        pointBorderColor: pastelColors.primary,
-                                        pointBackgroundColor: "#FFFFFF",
-                                        pointBorderWidth: 2,
-                                        pointRadius: 4,
-                                        pointHoverRadius: 6,
-                                        tension: 0.4
-                                    }]
-                                }
-                            };
-                        };
-
-                        // Generate reconfig metric with random values
-                        const generateReconfigMetric = () => {
-                            const dataPoints = generateRandomArray(12, 8, 45);
-                            const totalReconfigs = dataPoints.reduce((a, b) => a + b, 0);
-
-                            return {
-                                title: "Template Reconfigurations",
-                                summary: `${totalReconfigs} total`,
-                                type: "bar",
-                                config: {
-                                    labels: generateTimeLabels(dataPoints.length),
-                                    datasets: [{
-                                        label: "Html Template Reconfigurations",
-                                        maxBarThickness: 30,
-                                        data: dataPoints,
-                                        backgroundColor: pastelColors.indigo,
-                                        hoverBackgroundColor: pastelColors.secondary,
-                                        borderColor: pastelColors.secondary,
-                                        borderWidth: 1
-                                    }]
-                                }
-                            };
-                        };
-
-                        // Generate deployments metric with random values
-                        const generateDeploymentsMetric = () => {
-                            const deploymentCount = 8;
-                            const deployments = Array.from({length: deploymentCount}, () => ({
-                                success: randomBetween(10, 40),
-                                failed: randomBetween(1, 8)
-                            }));
-
-                            const totalSuccess = deployments.reduce((sum, d) => sum + d.success, 0);
-                            const totalFailed = deployments.reduce((sum, d) => sum + d.failed, 0);
-                            const successRate = Math.round((totalSuccess / (totalSuccess + totalFailed)) * 100);
-
-                            return {
-                                title: "Deployments",
-                                summary: `${successRate}% success`,
-                                type: "bar",
-                                config: {
-                                    labels: deployments.map((_, index) => `Deploy ${index + 1}`),
-                                    datasets: [
-                                        {
-                                            label: "Successful",
-                                            data: deployments.map(d => d.success),
-                                            backgroundColor: pastelColors.success,
-                                            borderColor: pastelColors.success,
-                                            borderWidth: 1,
-                                            stack: "Stack 0"
-                                        },
-                                        {
-                                            label: "Failed",
-                                            data: deployments.map(d => d.failed),
-                                            backgroundColor: pastelColors.danger,
-                                            borderColor: pastelColors.danger,
-                                            borderWidth: 1,
-                                            stack: "Stack 0"
-                                        }
-                                    ]
-                                }
-                            };
-                        };
-
-                        // Generate violations metric with random values
-                        const generateViolationsMetric = () => {
-                            const dataPoints = generateRandomArray(12, 3, 30);
-                            const totalViolations = dataPoints.reduce((a, b) => a + b, 0);
-
-                            return {
-                                title: "Policy Violations",
-                                summary: `${totalViolations} total`,
-                                type: "line",
-                                config: {
-                                    labels: generateTimeLabels(dataPoints.length),
-                                    datasets: [{
-                                        label: "Policy Violations",
-                                        data: dataPoints,
-                                        borderWidth: 2,
-                                        borderColor: pastelColors.warning,
-                                        backgroundColor: `${pastelColors.warning}20`,
-                                        pointBorderColor: pastelColors.warning,
-                                        pointBackgroundColor: "#FFFFFF",
-                                        pointBorderWidth: 2,
-                                        pointRadius: 4,
-                                        pointHoverRadius: 6,
-                                        tension: 0.4,
-                                        fill: true
-                                    }]
-                                }
-                            };
-                        };
-
-                        // Generate count metrics with random values
-                        const generateActiveUsersMetric = () => ({
-                            title: "Active Users",
-                            type: "count",
-                            data: {
-                                value: randomBetween(1250, 2500)
-                            },
-                            config: {
-                                suffix: ""
-                            }
-                        });
-
-                        const generateErrorRateMetric = () => ({
-                            title: "Error Rate",
-                            type: "count",
-                            data: {
-                                value: (Math.random() * 5).toFixed(2)
-                            },
-                            config: {
-                                suffix: "%"
-                            }
-                        });
-
-                        const generateUptimeMetric = () => ({
-                            title: "Uptime",
-                            type: "progress",
-                            data: {
-                                value: (99.5 + Math.random() * 0.4).toFixed(2)
-                            },
-                            config: {
-                                suffix: "%"
-                            }
-                        });
-
-                        const generateMemoryUsageMetric = () => ({
-                            title: "Memory Usage",
-                            type: "count",
-                            data: {
-                                value: randomBetween(45, 85)
-                            },
-                            config: {
-                                suffix: "%"
-                            }
-                        });
-
-                        const generateApiRequestsMetric = () => ({
-                            title: "API Requests",
-                            type: "count",
-                            data: {
-                                value: randomBetween(15000, 45000)
-                            },
-                            config: {
-                                suffix: "/hr"
-                            }
-                        });
-
-                        // Generate all metrics with random values every time
-                        const allMetrics = [
-                            generateLatencyMetric(),
-                            generateReconfigMetric(),
-                            generateDeploymentsMetric(),
-                            generateViolationsMetric(),
-                            generateActiveUsersMetric(),
-                            generateErrorRateMetric(),
-                            generateUptimeMetric(),
-                            generateMemoryUsageMetric(),
-                            generateApiRequestsMetric()
-                        ];
-
-                        return {
-                            success: true,
-                            timestamp: new Date().toISOString(),
-                            metrics: allMetrics
-                        };
-
-
+                    try {
+                        const measurements = req.query.measurement || []
+                        const interval = req.query.interval || '-30d'
+                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements,interval)
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
