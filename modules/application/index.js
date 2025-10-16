@@ -1,4 +1,4 @@
-const {v4: uuidv4} = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const Joi = require('joi');
 const yaml = require('yaml');
 const slugify = require('slugify');
