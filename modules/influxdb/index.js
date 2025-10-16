@@ -27,7 +27,7 @@ module.exports = {
                                   import "influxdata/influxdb/schema"
                                   
                                   schema.measurements(
-                                    bucket: "nebulous_04e824d1-9ca4-45d7-8600-57a7d35568d0_bucket"
+                                    bucket: "nebulous_${uuid}_bucket"
                                   )
                                 `;
 
@@ -48,7 +48,7 @@ module.exports = {
                     });
                 })
             },
-            getTimeSeriesForMeasurements(uuid, measurements = [], time = '-30d') {
+            getTimeSeriesForMeasurements(uuid, measurements = [], time = '-3h') {
                 const influxDB = new InfluxDB({
                     url: connection_options.url,
                     token: connection_options.token,
@@ -68,7 +68,7 @@ module.exports = {
 
                     // Query to get time series data
                     const fluxQuery = `
-            from(bucket: "nebulous_04e824d1-9ca4-45d7-8600-57a7d35568d0_bucket")
+            from(bucket: "nebulous_${uuid}_bucket")
                 |> range(start: ${time})
                 ${measurementFilter}
                 |> filter(fn: (r) => r._field == "metricValue")
