@@ -1069,6 +1069,24 @@ module.exports = {
                         throw self.apos.error(error.name, error.message);
                     }
                 },
+                async ':uuid/bqa/validate'(req) {
+                    const uuid = req.params.uuid;
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+                    // Fetch the existing application document
+                    const existingApp = await self.apos.doc.find(req, {
+                        uuid: uuid,
+                        organization: adminOrganization
+                    }).toObject();
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+                    try {
+                        return await apos.modules.exn.bqa_application_validate(uuid,existingApp);
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
+                    }
+                },
                 async ':uuid/uuid/duplicate'(req) {
                     const {uuid} = req.params;
                     const {title} = req.body;
@@ -1373,7 +1391,7 @@ module.exports = {
                     }
 
                     try {
-
+                        const validSLO= await self.apos.modules.exn.bqa_application_validate(uuid,existingApp);
                         const app = await self.find(req, {uuid: uuid}).toObject();
                         self.convertComponentsToBackendFormat(req.body, app);
                         const updatedApp = await self.update(req, app);
