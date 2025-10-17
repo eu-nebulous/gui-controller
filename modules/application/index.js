@@ -1,4 +1,4 @@
-const {v4: uuidv4} = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const Joi = require('joi');
 const yaml = require('yaml');
 const slugify = require('slugify');
@@ -6,6 +6,7 @@ const mathutils = require('../../lib/math');
 const metric_model = require('../../lib/metric_model');
 const kubevela = require('../../lib/kubevela')
 const _ = require('lodash')
+const OpenAI = require("openai");
 
 const projection = {
     title: 1,
@@ -19,7 +20,10 @@ const projection = {
     parameters: 1,
     templates: 1,
     metrics: 1,
+    policy: 1,
     sloViolations: 1,
+    slCreations: 1,
+    slMetaConstraints: 1,
     utilityFunctions: 1
 };
 
@@ -28,6 +32,7 @@ module.exports = {
     extend: '@apostrophecms/piece-type',
     options: {
         label: 'Application',
+        autopublish: true,
     },
     fields: {
         add: {
@@ -89,6 +94,10 @@ module.exports = {
                         }
                     }
                 }
+            },
+            policy: {
+                type: 'string',
+                label: 'Policy',
             },
             resources: {
                 type: 'array',
@@ -383,6 +392,16 @@ module.exports = {
                 label: 'SLO',
                 textarea: true,
             },
+            slCreations: {
+                type: 'string',
+                label: 'SL',
+                textarea: true
+            },
+            slMetaConstraints: {
+                type: 'string',
+                label: 'Meta Constraints',
+                textarea: true
+            },
             utilityFunctions: {
                 type: 'array',
                 label: 'Utility Functions',
@@ -454,7 +473,11 @@ module.exports = {
             },
             metricsGroup: {
                 label: 'Metrics',
-                fields: ['metrics', 'sloViolations']
+                fields: ['metrics', 'sloViolations', 'slCreations', 'slMetaConstraints']
+            },
+            securityGroup: {
+                label: 'Security',
+                fields: ['policy']
             },
             expressionEditor: {
                 label: 'Expression Editor',
@@ -503,7 +526,19 @@ module.exports = {
         }).messages({
             'string.yaml': "Content must be in valid YAML format.",
         });
-
+        const policySchema = Joi.string().optional().allow(null).allow('').custom((value, helpers) => {
+            try {
+                if (value === '') {
+                    return ''
+                }
+                JSON.parse(value);
+                return value;
+            } catch (err) {
+                return helpers.error('string.policy');
+            }
+        }).messages({
+            'string.policy': "Content must be in valid JSON format.",
+        });
         const environmenSchema = Joi.object({
             name: Joi.string()
                 .required()
@@ -709,7 +744,7 @@ module.exports = {
                 'string.base': 'Function Name must be a string.',
                 'any.required': 'Function Name is required.'
             }),
-            functionType: Joi.string().valid('maximize', 'constant', 'minimize','constraint').insensitive().required().messages({
+            functionType: Joi.string().valid('maximize', 'constant', 'minimize', 'constraint').insensitive().required().messages({
                 'string.base': 'Function Type must be a string.',
                 'any.required': 'Function Type is required.',
                 'any.only': 'Function Type must be either "Maximize" , "Constant", "Constant" or "Minimize.'
@@ -799,6 +834,7 @@ module.exports = {
                 };
 
                 validateField(doc.content, contentSchema, 'content');
+                validateField(doc.policy, policySchema, 'policy');
                 validateArray(doc.variables, variableSchema, 'variables');
                 validateArray(doc.resources, resourcesSchema, 'resources');
                 validateArray(doc.parameters, parameterSchema, 'parameters');
@@ -815,7 +851,9 @@ module.exports = {
 
                 return new Promise(async (resolve) => {
 
-                    const resource_uuids = doc.resources.map(r => { return r.uuid})
+                    const resource_uuids = doc.resources.map(r => {
+                        return r.uuid
+                    })
                     const resources = await self.apos.modules.resources
                         .find(req, {'uuid': {$in: resource_uuids}})
                         .project({
@@ -843,15 +881,15 @@ module.exports = {
                         resource._regions = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
                         resource.validInstanceTypes = resource.validInstanceTypes || [];
                         resource._valid_instance_types = Array.isArray(resource.regions) ? resource.regions.join(",") : resource.regions;
-                        ['_edit','_publish','_delete','_create','metaType','type','_id'].forEach(key => {
+                        ['_edit', '_publish', '_delete', '_create', 'metaType', 'type', '_id'].forEach(key => {
                             delete resource[key]
                         })
                     })
 
                     doc.resources.forEach(r => {
-                        const found = resources.find((tr)=> tr.uuid === r.uuid)
-                        if(found) {
-                           _.extend(r,found)
+                        const found = resources.find((tr) => tr.uuid === r.uuid)
+                        if (found) {
+                            _.extend(r, found)
                         }
                     })
 
@@ -861,7 +899,7 @@ module.exports = {
             async getDSL(req, uuid) {
                 const updatedApp = await self.find(req, {uuid: uuid}).project(projection).toArray();
                 const doc = updatedApp.pop();
-                if(!doc){
+                if (!doc) {
                     return {
                         'json': {},
                         'metricModel': {},
@@ -874,8 +912,8 @@ module.exports = {
 
 
                 return {
-                    'json':docJson,
-                    'metricModel':metricModel,
+                    'json': docJson,
+                    'metricModel': metricModel,
                 }
             },
 
@@ -911,6 +949,61 @@ module.exports = {
                         throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                     }
                 },
+                async validateConstraints(req) {
+                    if (!self.apos.permission.can(req, 'edit')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+                    const slMetaContraints = req.body;
+                    const valid = await new Promise((resolve) => {
+                        setTimeout(() => {
+                            const randomBoolean = Math.random() < 0.5;
+                            resolve(randomBoolean);
+                        }, 5000);
+                    });
+                    console.log("Returning valid for ", slMetaContraints, valid);
+                    return valid;
+                },
+                async 'generate'(req) {
+                    if (!self.apos.permission.can(req, 'edit')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+                    const contents = req.body
+
+                    if (!contents || !contents.prompt) {
+                        return {
+                            'success': false,
+                            'answer': ''
+                        }
+                    }
+
+                    const aiPrompt = await self.apos.modules.prompt.find(req, {'title': 'default'})
+                        .limit(1).toObject()
+
+                    if (!aiPrompt) {
+                        console.error('No default prompt found');
+                        return {
+                            'success': false,
+                            'answer': ''
+                        }
+                    }
+
+                    const client = new OpenAI({
+                        'apiKey': process.env.OPENAI_KEY
+                    });
+
+                    const response = await client.responses.create({
+                        model: aiPrompt.model,
+                        input: aiPrompt.content
+                            + "The contents of the application description can be found between the ``` ``` in the following section"
+                            + "```" + contents.prompt + "```",
+                    });
+
+                    return {
+                        'success': true,
+                        'answer': response.output_text
+                    }
+
+                },
                 async ':uuid/uuid/deploy'(req) {
 
                     const uuid = req.params.uuid;
@@ -929,7 +1022,10 @@ module.exports = {
 
                     try {
 
-                        const updatedApp = await self.find(req,{ uuid: uuid , organization:adminOrganization }).project(projection).toArray();
+                        const updatedApp = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toArray();
                         await self.apos.modules.exn.send_application_dsl(uuid)
                         await self.apos.doc.db.updateOne(
                             {uuid: uuid},
@@ -999,6 +1095,8 @@ module.exports = {
                         parameters: _.cloneDeep(existingApp.parameters),
                         metrics: _.cloneDeep(existingApp.metrics),
                         sloViolations: _.cloneDeep(existingApp.sloViolations),
+                        slCreations: _.cloneDeep(existingApp.slCreations),
+                        slMetaConstraints: _.cloneDeep(existingApp.slMetaConstraints),
                         utilityFunctions: _.cloneDeep(existingApp.utilityFunctions),
 
                         slug: `${existingApp.slug}-copy-${Date.now()}`,
@@ -1007,7 +1105,6 @@ module.exports = {
                         updatedAt: new Date(),
                         _id: undefined,
                     };
-
                     const newDoc = await self.insert(req, newDocData);
 
                     return newDoc;
@@ -1149,7 +1246,66 @@ module.exports = {
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
+                },
+                async ':uuid/monitor/metrics'(req) {
+
+                    const uuid = req.params.uuid;
+                    if (!self.apos.permission.can(req, 'view')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
+                     const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
+                    if (!doc) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    if (doc.organization !== adminOrganization) {
+                        throw self.apos.error('forbidden', 'Access denied');
+                    }
+
+                    try {
+                        return await self.apos.modules.influxdb.getAvailableMeasurements(doc.uuid)
+                    } catch (error) {
+                        throw self.apos.error('error', error.message);
+                    }
+                },
+                async ':uuid/monitor/data'(req) {
+
+                    const uuid = req.params.uuid;
+                    if (!self.apos.permission.can(req, 'view')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
+                     const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).project(projection).toObject();
+                    if (!doc) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    if (doc.organization !== adminOrganization) {
+                        throw self.apos.error('forbidden', 'Access denied');
+                    }
+
+                    try {
+                        const measurements = req.query.measurement || []
+                        const interval = req.query.interval || '-30d'
+                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements,interval)
+                    } catch (error) {
+                        throw self.apos.error('error', error.message);
+                    }
                 }
+
             },
             delete: {
                 async ':uuid/uuid'(req) {
@@ -1218,10 +1374,9 @@ module.exports = {
 
                     try {
 
-                        const app = await self.find(req, {uuid:uuid}).toObject();
+                        const app = await self.find(req, {uuid: uuid}).toObject();
                         self.convertComponentsToBackendFormat(req.body, app);
-                        const updatedApp  = await self.update(req, app);
-                        await self.publish(req, app);
+                        const updatedApp = await self.update(req, app);
                         return {
                             status: 'success',
                             message: 'Application partially updated successfully',
