@@ -1054,17 +1054,16 @@ module.exports = {
                     if (!existingApp) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
-
                     try {
-                        existingApp.status = 'undeploying';
+                        const res = await self.apos.modules.exn.application_undeploy(uuid)
+                        existingApp.status = 'draft';
+                        existingApp.uuid = res.newUuid
                         await self.apos.doc.update(req, existingApp);
-
-                        const response = {
-                            status: 'undeploying',
+                        return {
+                            status: 'draft',
                             message: 'Application undeployment started',
                             updatedResource: existingApp
                         };
-
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
