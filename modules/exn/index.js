@@ -214,6 +214,43 @@ module.exports = {
                 })
 
             },
+            application_undeploy(uuid) {
+                return new Promise((resolve, reject) => {
+                    const correlation_id = uuidv4();
+                    // correlations[correlation_id] = {
+                    //     resolve: async (message) => {
+                    //         console.log("Undeploy resolved", message);
+                    //         resolve({
+                    //             "newUuid": uuidv4(),
+                    //             "message": message,
+                    //         });
+                    //     }, reject: (error) => {
+                    //         console.error("Undeploy failed", error);
+                    //         reject(error);
+                    //     }
+                    // };
+
+
+                    const message = {
+                        to: sender_sal_cloud_delete.options.target.address,
+                        correlation_id: correlation_id,
+                        message_annotations: {application: uuid},
+                        body: {
+                            metaData: {
+                                userId: "admin"
+                            }, applicationId: uuid
+                        }
+                    };
+
+                    console.log("Sending undeploy message to cloud: ", message);
+                    sender_sal_cloud_delete.send(message);
+                    resolve({
+                            "newUuid": uuidv4(),
+                            "message": message
+                        }
+                    )
+                });
+            },
             sender_ui_application_new(uuid) {
                 return new Promise((resolve, reject) => {
                     const correlation_id = uuidv4()
@@ -367,38 +404,7 @@ module.exports = {
                 })
 
             }
-            ,
-            application_undeploy(uuid) {
-                return new Promise((resolve, reject) => {
-                    const correlation_id = uuidv4();
-                    correlations[correlation_id] = {
-                        resolve: async (message) => {
-                            console.log("Undeploy resolved", message);
-                            const newUuid = uuidv4();
-                            await updateApplicationStatusAndUuid(uuid, 'draft', newUuid);
-                            resolve(message);
-                        }, reject: (error) => {
-                            console.error("Undeploy failed", error);
-                            reject(error);
-                        }
-                    };
 
-
-                    const message = {
-                        to: sender_sal_cloud_delete.options.target.address,
-                        correlation_id: correlation_id,
-                        message_annotations: {application: uuid},
-                        body: {
-                            metaData: {
-                                userId: "admin"
-                            }, applicationId: uuid
-                        }
-                    };
-
-                    console.log("Sending undeploy message to cloud: ", message);
-                    sender_sal_cloud_delete.send(message);
-                });
-            }
         }
     }
 
