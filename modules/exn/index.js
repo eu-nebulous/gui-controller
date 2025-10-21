@@ -232,7 +232,7 @@ module.exports = {
 
 
                     const message = {
-                        to: sender_sal_cloud_delete.options.target.address,
+                        to: sender_ui_application_undeploy.options.target.address,
                         correlation_id: correlation_id,
                         message_annotations: {application: uuid},
                         body: {
@@ -242,8 +242,8 @@ module.exports = {
                         }
                     };
 
-                    console.log("Sending undeploy message to cloud: ", message);
-                    sender_sal_cloud_delete.send(message);
+                    console.log("Sending undeploy message: ", message);
+                    sender_ui_application_undeploy.send(message);
                     resolve({
                             "newUuid": uuidv4(),
                             "message": message
