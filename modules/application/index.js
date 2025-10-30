@@ -11,6 +11,7 @@ const OpenAI = require("openai");
 const projection = {
     title: 1,
     uuid: 1,
+    token: 1,
     status: 1,
     organization: 1,
     content: 1,
@@ -39,6 +40,10 @@ module.exports = {
             uuid: {
                 type: 'string',
                 label: 'UUID'
+            },
+            token:{
+                type: 'string',
+                label: 'Token'
             },
             status: {
                 type: 'string',
@@ -1128,6 +1133,38 @@ module.exports = {
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
+                },
+                async ':uuid/vr/token'(req) {
+
+                    const uuid = req.params.uuid;
+
+                    if (!self.apos.permission.can(req, 'view')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+
+                    try {
+                        const currentUser = req.user;
+                        const adminOrganization = currentUser.organization;
+
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).toObject();
+                        if (!doc) {
+                            throw self.apos.error('notfound', 'Application not found');
+                        }
+
+                        if (doc.organization !== adminOrganization) {
+                            throw self.apos.error('forbidden', 'Access denied');
+                        }
+
+                        const token = uuidv4();
+                        doc.token = token;
+                        await self.update(req,doc)
+                        return token;
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
+                    }
                 }
 
             },
@@ -1303,7 +1340,28 @@ module.exports = {
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
+                },
+                async 'vr/data/:token'(req) {
+
+                    const token = req.params.token;
+
+                    const doc = await self.find(req, {
+                            token: token,
+                        }).project(projection).toObject();
+
+                    if (!doc) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    try {
+                        const measurements = req.query.measurement || []
+                        const interval = req.query.interval || '-30d'
+                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements,interval)
+                    } catch (error) {
+                        throw self.apos.error('error', error.message);
+                    }
                 }
+
 
             },
             delete: {
