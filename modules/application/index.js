@@ -1355,13 +1355,21 @@ module.exports = {
 
                     try {
                         const measurements = req.query.measurement || []
-                        const interval = req.query.interval || '-30d'
-                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements,interval)
+                        const interval = req.query.interval || '-1d'
+                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements,interval)
+                        return  {
+                                charts: res.map(chart => ({
+                                  title: chart.title,
+                                  points: chart.config.labels.map((label, index) => ({
+                                    t: label,
+                                    v: chart.config.datasets[0].data[index]
+                                  }))
+                                }))
+                              };
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
                 }
-
 
             },
             delete: {
