@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const {v4: uuidv4} = require('uuid');
 const Joi = require('joi');
 const yaml = require('yaml');
 const slugify = require('slugify');
@@ -41,7 +41,7 @@ module.exports = {
                 type: 'string',
                 label: 'UUID'
             },
-            token:{
+            token: {
                 type: 'string',
                 label: 'Token'
             },
@@ -1160,7 +1160,7 @@ module.exports = {
 
                         const token = uuidv4();
                         doc.token = token;
-                        await self.update(req,doc)
+                        await self.update(req, doc)
                         return token;
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
@@ -1293,10 +1293,10 @@ module.exports = {
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
-                     const doc = await self.find(req, {
-                            uuid: uuid,
-                            organization: adminOrganization
-                        }).project(projection).toObject();
+                    const doc = await self.find(req, {
+                        uuid: uuid,
+                        organization: adminOrganization
+                    }).project(projection).toObject();
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1321,10 +1321,10 @@ module.exports = {
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
-                     const doc = await self.find(req, {
-                            uuid: uuid,
-                            organization: adminOrganization
-                        }).project(projection).toObject();
+                    const doc = await self.find(req, {
+                        uuid: uuid,
+                        organization: adminOrganization
+                    }).project(projection).toObject();
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1336,7 +1336,7 @@ module.exports = {
                     try {
                         const measurements = req.query.measurement || []
                         const interval = req.query.interval || '-30d'
-                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements,interval)
+                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements, interval)
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
@@ -1346,8 +1346,8 @@ module.exports = {
                     const token = req.params.token;
 
                     const doc = await self.find(req, {
-                            token: token,
-                        }).project(projection).toObject();
+                        token: token,
+                    }).project(projection).toObject();
 
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
@@ -1355,17 +1355,29 @@ module.exports = {
 
                     try {
                         const measurements = req.query.measurement || []
-                        const interval = req.query.interval || '-1d'
-                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements,interval)
-                        return  {
-                                charts: res.map(chart => ({
-                                  title: chart.title,
-                                  points: chart.config.labels.map((label, index) => ({
-                                    t: label,
-                                    v: chart.config.datasets[0].data[index]
-                                  }))
-                                }))
-                              };
+                        const interval = req.query.interval || '-30d'
+                        const range = req.query.range || 10
+                        const slice = req.query.slice || 5
+
+                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements, interval)
+                        return {
+                            application: doc.title,
+                            uuid: doc.uuid,
+                            charts: res.map(chart => {
+                                const slicedValues = chart.config.datasets[0].data.slice(0, slice);
+                                const maxValue = Math.max(...slicedValues);
+
+                                return {
+                                    title: chart.title,
+                                    points: chart.config.labels.slice(0, slice).map((label, index) => ({
+                                        title: label,
+                                        value: maxValue > 0 ? (chart.config.datasets[0].data[index] / maxValue) * range : 0,
+                                        raw: chart.config.datasets[0].data[index]
+                                    }))
+
+                                }
+                            })
+                        };
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
