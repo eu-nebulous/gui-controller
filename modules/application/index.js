@@ -1355,21 +1355,34 @@ module.exports = {
 
                     try {
                         const measurements = req.query.measurement || []
-                        const interval = req.query.interval || '-1d'
-                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements,interval)
-                        return  {
-                                charts: res.map(chart => ({
-                                  title: chart.title,
-                                  points: chart.config.labels.map((label, index) => ({
-                                    t: label,
-                                    v: chart.config.datasets[0].data[index]
-                                  }))
-                                }))
-                              };
+                        const interval = req.query.interval || '-30d'
+                        const range = req.query.range || 10
+                        const slice = req.query.slice || 5
+
+                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements, interval)
+                        return {
+                            application: doc.title,
+                            uuid: doc.uuid,
+                            charts: res.map(chart => {
+                                const slicedValues = chart.config.datasets[0].data.slice(0, slice);
+                                const maxValue = Math.max(...slicedValues);
+
+                                return {
+                                    title: chart.title,
+                                    points: chart.config.labels.slice(0, slice).map((label, index) => ({
+                                        title: label,
+                                        value: maxValue > 0 ? (chart.config.datasets[0].data[index] / maxValue) * range : 0,
+                                        raw: chart.config.datasets[0].data[index]
+                                    }))
+
+                                }
+                            })
+                        };
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
                 }
+
 
             },
             delete: {
