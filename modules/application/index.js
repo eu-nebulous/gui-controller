@@ -1046,6 +1046,28 @@ module.exports = {
                         throw self.apos.error(error.name, error.message);
                     }
                 },
+                async ':uuid/uuid/debug'(req) {
+
+                    const uuid = req.params.uuid;
+
+                    // let errorResponses = self.validateDocument(updateData, true) || [];
+                    // if (errorResponses.length > 0) {
+                    //     throw self.apos.error('required', 'Validation failed', { error: errorResponses });
+                    // }
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
+                    const existingApp = await self.apos.doc.db.findOne({uuid: uuid, organization: adminOrganization});
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    try {
+                        await self.apos.modules.exn.send_application_dsl(uuid)
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
+                    }
+                },
                 async ':uuid/uuid/undeploy'(req) {
                     const uuid = req.params.uuid;
                     const currentUser = req.user;
