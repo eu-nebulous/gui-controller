@@ -48,7 +48,8 @@ const credentialsSchema = Joi.object({
 module.exports = {
     extend: '@apostrophecms/piece-type',
     options: {
-        label: 'Resource'
+        label: 'Resource',
+        autopublish: true
     },
     fields: {
         add: {
