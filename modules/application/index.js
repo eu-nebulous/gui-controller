@@ -521,6 +521,9 @@ module.exports = {
         };
     },
     methods(self) {
+        validateMetaConstraints = (uuid,doc) => {
+            return self.apos.modules.exn.bqa_application_validate(uuid,doc)
+        };
         const contentSchema = Joi.string().custom((value, helpers) => {
             try {
                 yaml.parse(value);
@@ -855,7 +858,9 @@ module.exports = {
             async updateWithRegions(req, doc) {
 
                 return new Promise(async (resolve) => {
-
+                    if(!doc.resources){
+                        doc.resources = []
+                    }
                     const resource_uuids = doc.resources.map(r => {
                         return r.uuid
                     })
@@ -950,23 +955,21 @@ module.exports = {
 
                     const doc = req.body;
                     let errorResponses = self.validateDocument(doc) || [];
+
+                    if(doc.uuid){
+                        const metaConstraintValidation = await validateMetaConstraints(doc.uuid, doc)
+                        if(!metaConstraintValidation.valid){
+                            errorResponses.push({
+                                        path: `slMetaConstraint`,
+                                        index: 90,
+                                        key: `slMetaConstraint`,
+                                        message: metaConstraintValidation.message || 'Please check the SL Meta Constraints'
+                                    })
+                        }
+                    }
                     if (errorResponses.length > 0) {
                         throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                     }
-                },
-                async validateConstraints(req) {
-                    if (!self.apos.permission.can(req, 'edit')) {
-                        throw self.apos.error('forbidden', 'Insufficient permissions');
-                    }
-                    const slMetaContraints = req.body;
-                    const valid = await new Promise((resolve) => {
-                        setTimeout(() => {
-                            const randomBoolean = Math.random() < 0.5;
-                            resolve(randomBoolean);
-                        }, 5000);
-                    });
-                    console.log("Returning valid for ", slMetaContraints, valid);
-                    return valid;
                 },
                 async 'generate'(req) {
                     if (!self.apos.permission.can(req, 'edit')) {
