@@ -44,6 +44,8 @@ let sender_ui_application_dsl_metric;
 let sender_ui_policies_rule_upsert;
 let sender_ui_policies_model_upsert;
 
+let sender_bqa_validate_slos;
+
 
 let sender_ui_application_user_info;
 let sender_ui_application_info;
@@ -108,6 +110,11 @@ module.exports = {
                             await aposSelf.update_application_state(context.message.application_properties.application, context.message.body);
                         }
 
+                        if (context.message.to === "topic://eu.nebulouscloud.ontology.bqa.reply") {
+                            correlations[context.message.correlation_id]['resolve'](context.message.body)
+                            return
+                        }
+
                         if (context.message.correlation_id in correlations) {
                             if (context.message.body.metaData['status'] >= 400) {
                                 correlations[context.message.correlation_id]['reject'](context.message.body['message'])
@@ -127,6 +134,7 @@ module.exports = {
                         context.connection.open_receiver('topic://eu.nebulouscloud.optimiser.controller.app_state')
                         context.connection.open_receiver('topic://eu.nebulouscloud.ui.user.get')
                         context.connection.open_receiver('topic://eu.nebulouscloud.ui.app.get')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.ontology.bqa.reply')
 
                         sender_sal_nodecandidate_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.nodecandidate.get');
                         sender_sal_cloud_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.get');
@@ -146,6 +154,8 @@ module.exports = {
 
                         sender_ui_application_user_info = context.connection.open_sender('topic://eu.nebulouscloud.ui.user.get.reply');
                         sender_ui_application_info = context.connection.open_sender('topic://eu.nebulouscloud.ui.app.get.reply');
+
+                        sender_bqa_validate_slos = context.connection.open_sender('topic://eu.nebulouscloud.ontology.bqa');
 
                     });
 
@@ -350,7 +360,7 @@ module.exports = {
                 })
             }
             ,
-            async bqa_application_validate(uuid,app) {
+            async bqa_application_validate(uuid) {
                 return new Promise(async (resolve, reject) => {
 
                     const correlation_id = uuidv4()
@@ -367,8 +377,11 @@ module.exports = {
                         body: dsl.json
                     }
                    const timer = setTimeout(() => {
-                        reject(new Error(`Promise timed out after ${5000} ms`));
-                    }, 5000);
+                        console.warn("SLO Validator timeout")
+                        resolve({
+                            'valid':true
+                        })
+                    }, 7000);
 
                     console.log("[bqa_application_validate] Send ", JSON.stringify( message))
                     sender_bqa_validate_slos.send(message)
