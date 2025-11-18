@@ -11,6 +11,7 @@ const OpenAI = require("openai");
 const projection = {
     title: 1,
     uuid: 1,
+    token: 1,
     status: 1,
     organization: 1,
     content: 1,
@@ -39,6 +40,10 @@ module.exports = {
             uuid: {
                 type: 'string',
                 label: 'UUID'
+            },
+            token:{
+                type: 'string',
+                label: 'Token'
             },
             status: {
                 type: 'string',
@@ -516,6 +521,9 @@ module.exports = {
         };
     },
     methods(self) {
+        validateMetaConstraints = (uuid,doc) => {
+            return self.apos.modules.exn.bqa_application_validate(uuid,doc)
+        };
         const contentSchema = Joi.string().custom((value, helpers) => {
             try {
                 yaml.parse(value);
@@ -850,7 +858,9 @@ module.exports = {
             async updateWithRegions(req, doc) {
 
                 return new Promise(async (resolve) => {
-
+                    if(!doc.resources){
+                        doc.resources = []
+                    }
                     const resource_uuids = doc.resources.map(r => {
                         return r.uuid
                     })
@@ -945,23 +955,21 @@ module.exports = {
 
                     const doc = req.body;
                     let errorResponses = self.validateDocument(doc) || [];
+
+                    if(doc.uuid){
+                        const metaConstraintValidation = await validateMetaConstraints(doc.uuid, doc)
+                        if(!metaConstraintValidation.valid){
+                            errorResponses.push({
+                                        path: `slMetaConstraint`,
+                                        index: 90,
+                                        key: `slMetaConstraint`,
+                                        message: metaConstraintValidation.message || 'Please check the SL Meta Constraints'
+                                    })
+                        }
+                    }
                     if (errorResponses.length > 0) {
                         throw self.apos.error('required', 'Validation failed', {error: errorResponses});
                     }
-                },
-                async validateConstraints(req) {
-                    if (!self.apos.permission.can(req, 'edit')) {
-                        throw self.apos.error('forbidden', 'Insufficient permissions');
-                    }
-                    const slMetaContraints = req.body;
-                    const valid = await new Promise((resolve) => {
-                        setTimeout(() => {
-                            const randomBoolean = Math.random() < 0.5;
-                            resolve(randomBoolean);
-                        }, 5000);
-                    });
-                    console.log("Returning valid for ", slMetaContraints, valid);
-                    return valid;
                 },
                 async 'generate'(req) {
                     if (!self.apos.permission.can(req, 'edit')) {
@@ -1037,6 +1045,28 @@ module.exports = {
                             updatedResource: updatedApp
                         };
 
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
+                    }
+                },
+                async ':uuid/uuid/debug'(req) {
+
+                    const uuid = req.params.uuid;
+
+                    // let errorResponses = self.validateDocument(updateData, true) || [];
+                    // if (errorResponses.length > 0) {
+                    //     throw self.apos.error('required', 'Validation failed', { error: errorResponses });
+                    // }
+                    const currentUser = req.user;
+                    const adminOrganization = currentUser.organization;
+
+                    const existingApp = await self.apos.doc.db.findOne({uuid: uuid, organization: adminOrganization});
+                    if (!existingApp) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    try {
+                        await self.apos.modules.exn.send_application_dsl(uuid)
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
                     }
@@ -1127,6 +1157,38 @@ module.exports = {
                         return apps;
                     } catch (error) {
                         throw self.apos.error('error', error.message);
+                    }
+                },
+                async ':uuid/vr/token'(req) {
+
+                    const uuid = req.params.uuid;
+
+                    if (!self.apos.permission.can(req, 'view')) {
+                        throw self.apos.error('forbidden', 'Insufficient permissions');
+                    }
+
+                    try {
+                        const currentUser = req.user;
+                        const adminOrganization = currentUser.organization;
+
+                        const doc = await self.find(req, {
+                            uuid: uuid,
+                            organization: adminOrganization
+                        }).toObject();
+                        if (!doc) {
+                            throw self.apos.error('notfound', 'Application not found');
+                        }
+
+                        if (doc.organization !== adminOrganization) {
+                            throw self.apos.error('forbidden', 'Access denied');
+                        }
+
+                        const token = uuidv4();
+                        doc.token = token;
+                        await self.update(req,doc)
+                        return token;
+                    } catch (error) {
+                        throw self.apos.error(error.name, error.message);
                     }
                 }
 
@@ -1303,7 +1365,49 @@ module.exports = {
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
+                },
+                async 'vr/data/:token'(req) {
+
+                    const token = req.params.token;
+
+                    const doc = await self.find(req, {
+                            token: token,
+                        }).project(projection).toObject();
+
+                    if (!doc) {
+                        throw self.apos.error('notfound', 'Application not found');
+                    }
+
+                    try {
+                        const measurements = req.query.measurement || []
+                        const interval = req.query.interval || '-30d'
+                        const range = req.query.range || 10
+                        const slice = req.query.slice || 5
+
+                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements, interval)
+                        return {
+                            application: doc.title,
+                            uuid: doc.uuid,
+                            charts: res.map(chart => {
+                                const slicedValues = chart.config.datasets[0].data.slice(0, slice);
+                                const maxValue = Math.max(...slicedValues);
+
+                                return {
+                                    title: chart.title,
+                                    points: chart.config.labels.slice(0, slice).map((label, index) => ({
+                                        title: label,
+                                        value: maxValue > 0 ? (chart.config.datasets[0].data[index] / maxValue) * range : 0,
+                                        raw: chart.config.datasets[0].data[index]
+                                    }))
+
+                                }
+                            })
+                        };
+                    } catch (error) {
+                        throw self.apos.error('error', error.message);
+                    }
                 }
+
 
             },
             delete: {
