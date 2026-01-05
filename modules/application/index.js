@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const {v4: uuidv4} = require('uuid');
 const Joi = require('joi');
 const yaml = require('yaml');
 const slugify = require('slugify');
@@ -41,7 +41,7 @@ module.exports = {
                 type: 'string',
                 label: 'UUID'
             },
-            token:{
+            token: {
                 type: 'string',
                 label: 'Token'
             },
@@ -490,7 +490,31 @@ module.exports = {
             }
         }
     },
-
+    init(self) {
+        self.apos.migration.add('fix-sl-creation', async () => {
+            try {
+                await self.apos.migration.eachDoc({
+                    type: 'application',
+                }, async (doc) => {
+                    if(doc.slCreations) {
+                        try{
+                            let creations =  JSON.parse(doc.slCreations)
+                            if(!Array.isArray(creations)) {
+                               creations = [creations]
+                            }
+                            await self.apos.doc.db.updateOne({
+                                _id: doc._id
+                            }, {
+                                $set: {slCreations: creations},
+                            });
+                        }catch (error) {}
+                    }
+                });
+            } catch (e) {
+                console.error("Couldn't run migration ", e)
+            }
+        });
+    },
     handlers(self) {
         return {
             'apostrophe:ready': {
@@ -521,8 +545,8 @@ module.exports = {
         };
     },
     methods(self) {
-        validateMetaConstraints = (uuid,doc) => {
-            return self.apos.modules.exn.bqa_application_validate(uuid,doc)
+        validateMetaConstraints = (uuid, doc) => {
+            return self.apos.modules.exn.bqa_application_validate(uuid, doc)
         };
         const contentSchema = Joi.string().custom((value, helpers) => {
             try {
@@ -858,7 +882,7 @@ module.exports = {
             async updateWithRegions(req, doc) {
 
                 return new Promise(async (resolve) => {
-                    if(!doc.resources){
+                    if (!doc.resources) {
                         doc.resources = []
                     }
                     const resource_uuids = doc.resources.map(r => {
@@ -956,15 +980,15 @@ module.exports = {
                     const doc = req.body;
                     let errorResponses = self.validateDocument(doc) || [];
 
-                    if(doc.uuid){
+                    if (doc.uuid) {
                         const metaConstraintValidation = await validateMetaConstraints(doc.uuid, doc)
-                        if(!metaConstraintValidation.valid){
+                        if (!metaConstraintValidation.valid) {
                             errorResponses.push({
-                                        path: `slMetaConstraint`,
-                                        index: 90,
-                                        key: `slMetaConstraint`,
-                                        message: metaConstraintValidation.message || 'Please check the SL Meta Constraints'
-                                    })
+                                path: `slMetaConstraint`,
+                                index: 90,
+                                key: `slMetaConstraint`,
+                                message: metaConstraintValidation.message || 'Please check the SL Meta Constraints'
+                            })
                         }
                     }
                     if (errorResponses.length > 0) {
@@ -1185,7 +1209,7 @@ module.exports = {
 
                         const token = uuidv4();
                         doc.token = token;
-                        await self.update(req,doc)
+                        await self.update(req, doc)
                         return token;
                     } catch (error) {
                         throw self.apos.error(error.name, error.message);
@@ -1318,10 +1342,10 @@ module.exports = {
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
-                     const doc = await self.find(req, {
-                            uuid: uuid,
-                            organization: adminOrganization
-                        }).project(projection).toObject();
+                    const doc = await self.find(req, {
+                        uuid: uuid,
+                        organization: adminOrganization
+                    }).project(projection).toObject();
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1346,10 +1370,10 @@ module.exports = {
                     const currentUser = req.user;
                     const adminOrganization = currentUser.organization;
 
-                     const doc = await self.find(req, {
-                            uuid: uuid,
-                            organization: adminOrganization
-                        }).project(projection).toObject();
+                    const doc = await self.find(req, {
+                        uuid: uuid,
+                        organization: adminOrganization
+                    }).project(projection).toObject();
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
                     }
@@ -1361,7 +1385,7 @@ module.exports = {
                     try {
                         const measurements = req.query.measurement || []
                         const interval = req.query.interval || '-30d'
-                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements,interval)
+                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements, interval)
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
@@ -1371,8 +1395,8 @@ module.exports = {
                     const token = req.params.token;
 
                     const doc = await self.find(req, {
-                            token: token,
-                        }).project(projection).toObject();
+                        token: token,
+                    }).project(projection).toObject();
 
                     if (!doc) {
                         throw self.apos.error('notfound', 'Application not found');
