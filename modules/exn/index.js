@@ -169,6 +169,7 @@ module.exports = {
                         return
                     } else {
                         const connection = container.connect(connection_options);
+                        console.log("Connected to ",connection_options.host, ":", connection_options.port );
                     }
 
 
