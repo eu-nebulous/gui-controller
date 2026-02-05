@@ -1,22 +1,18 @@
 require('dotenv').config();
 const {InfluxDB} = require('@influxdata/influxdb-client');
 
-const connection_options = {
-    'url': process.env.INFLUX_URL,
-    'token': process.env.INFLUX_TOKEN,
-    'organization': process.env.INFLUX_ORGANIZATION,
-}
 
 module.exports = {
     methods(self) {
         return {
-            getAvailableMeasurements(uuid) {
+            getAvailableMeasurements(connection_options, uuid) {
+
                 const influxDB = new InfluxDB({
-                    url: connection_options.url,
-                    token: connection_options.token,
+                    url: connection_options.INFLUXDB_URL,
+                    token: connection_options.INFLUXDB_TOKEN,
                 });
 
-                const queryApi = influxDB.getQueryApi(connection_options.organization);
+                const queryApi = influxDB.getQueryApi(connection_options.INFLUXDB_ORG);
 
                 return new Promise((resolve, reject) => {
 
@@ -27,7 +23,7 @@ module.exports = {
                                   import "influxdata/influxdb/schema"
                                   
                                   schema.measurements(
-                                    bucket: "nebulous_${uuid}_bucket"
+                                    bucket: "${connection_options.INFLUXDB_BUCKET}"
                                   )
                                 `;
 
@@ -48,17 +44,16 @@ module.exports = {
                     });
                 })
             },
-            getTimeSeriesForMeasurements(uuid, measurements = [], time = '-3h') {
+            getTimeSeriesForMeasurements(connection_options, uuid, measurements = [], time = '-3h') {
                 return new Promise((resolve, reject) => {
-
-
                     try {
                         const influxDB = new InfluxDB({
-                            url: connection_options.url,
-                            token: connection_options.token,
+                            url: connection_options.INFLUXDB_URL,
+                            token: connection_options.INFLUXDB_TOKEN,
                         });
 
-                        const queryApi = influxDB.getQueryApi(connection_options.organization);
+
+                        const queryApi = influxDB.getQueryApi(connection_options.INFLUXDB_ORG);
 
                         const timeSeriesData = [];
 
@@ -71,7 +66,7 @@ module.exports = {
 
                         // Query to get time series data
                         const fluxQuery = `
-                from(bucket: "nebulous_${uuid}_bucket")
+                from(bucket: "${connection_options.INFLUXDB_BUCKET}")
                     |> range(start: ${time})
                     ${measurementFilter}
                     |> filter(fn: (r) => r._field == "metricValue")
