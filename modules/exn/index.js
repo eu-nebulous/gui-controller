@@ -116,6 +116,10 @@ module.exports = {
                             correlations[context.message.correlation_id]['resolve'](context.message.body)
                             return
                         }
+                        if (context.message.to === "topic://eu.nebulouscloud.app_cluster.influxdb.get.reply") {
+                            correlations[context.message.correlation_id]['resolve'](context.message.body)
+                            return
+                        }
 
                         if (context.message.correlation_id in correlations) {
                             if (context.message.body.metaData['status'] >= 400) {
@@ -137,6 +141,7 @@ module.exports = {
                         context.connection.open_receiver('topic://eu.nebulouscloud.ui.user.get')
                         context.connection.open_receiver('topic://eu.nebulouscloud.ui.app.get')
                         context.connection.open_receiver('topic://eu.nebulouscloud.ontology.bqa.reply')
+                        context.connection.open_receiver('topic://eu.nebulouscloud.app_cluster.influxdb.get.reply')
 
                         sender_sal_nodecandidate_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.nodecandidate.get');
                         sender_sal_cloud_get = context.connection.open_sender('topic://eu.nebulouscloud.exn.sal.cloud.get');
@@ -403,13 +408,12 @@ module.exports = {
                         to: sender_app_influxdb.options.target.address,
                         correlation_id: correlation_id,
                         message_annotations: {application: uuid},
-                        application_properties: {application: uuid}
+                        application_properties: {application: uuid},
+                         body:""
                     }
                    const timer = setTimeout(() => {
                         console.warn("InfluxDB Crendetials not retrieved for application = ",uuid)
-                        resolve({
-                            'valid':true
-                        })
+                        resolve(false)
                     }, 7000);
 
                     console.log("[getApplicationInfluxDBCrendetials] Send ", JSON.stringify( message))

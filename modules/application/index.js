@@ -1380,7 +1380,7 @@ module.exports = {
 
                     try {
                         const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
-
+                        console.log("Got application influxDBCredentials ",credentials)
                         if (!credentials) {
                             throw self.apos.error('error', "Could not retrieve credentials");
                         }
@@ -1417,6 +1417,7 @@ module.exports = {
                         const interval = req.query.interval || '-30d'
 
                         const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
+                        console.log("Got credentials ",credentials)
                         if (!credentials) {
                             throw self.apos.error('error', "Could not retrieve credentials");
                         }
