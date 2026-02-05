@@ -46,6 +46,8 @@ let sender_ui_policies_model_upsert;
 
 let sender_bqa_validate_slos;
 
+let sender_app_influxdb;
+
 
 let sender_ui_application_user_info;
 let sender_ui_application_info;
@@ -156,6 +158,7 @@ module.exports = {
                         sender_ui_application_info = context.connection.open_sender('topic://eu.nebulouscloud.ui.app.get.reply');
 
                         sender_bqa_validate_slos = context.connection.open_sender('topic://eu.nebulouscloud.ontology.bqa');
+                        sender_app_influxdb = context.connection.open_sender('topic://eu.nebulouscloud.app_cluster.influxdb.get');
 
                     });
 
@@ -385,6 +388,31 @@ module.exports = {
 
                     console.log("[bqa_application_validate] Send ", JSON.stringify( message))
                     sender_bqa_validate_slos.send(message)
+                })
+            },
+            async getApplicationInfluxDBCredentials(uuid) {
+                return new Promise((resolve, reject) => {
+
+                    const correlation_id = uuidv4()
+                    correlations[correlation_id] = {
+                        'resolve': resolve, 'reject': reject,
+                    };
+                     const req = aposSelf.apos.task.getReq()
+                     const message = {
+                        to: sender_app_influxdb.options.target.address,
+                        correlation_id: correlation_id,
+                        message_annotations: {application: uuid},
+                        application_properties: {application: uuid}
+                    }
+                   const timer = setTimeout(() => {
+                        console.warn("InfluxDB Crendetials not retrieved for application = ",uuid)
+                        resolve({
+                            'valid':true
+                        })
+                    }, 7000);
+
+                    console.log("[getApplicationInfluxDBCrendetials] Send ", JSON.stringify( message))
+                    sender_app_influxdb.send(message)
                 })
             },
             get_cloud_candidates() {

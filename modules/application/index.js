@@ -514,6 +514,30 @@ module.exports = {
                 console.error("Couldn't run migration ", e)
             }
         });
+        self.apos.migration.add('fix-slo-violations', async () => {
+            try {
+                await self.apos.migration.eachDoc({
+                    type: 'application',
+                }, async (doc) => {
+                    if(doc.sloViolations) {
+                        try{
+                            let creations =  JSON.parse(doc.sloViolations)
+                            if(!Array.isArray(creations)) {
+                               creations = [creations]
+                            }
+                            await self.apos.doc.db.updateOne({
+                                _id: doc._id
+                            }, {
+                                $set: {sloViolations: creations},
+                            });
+                        }catch (error) {}
+                    }
+                });
+            } catch (e) {
+                console.error("Couldn't run migration ", e)
+            }
+        });
+
     },
     handlers(self) {
         return {
@@ -1355,7 +1379,13 @@ module.exports = {
                     }
 
                     try {
-                        return await self.apos.modules.influxdb.getAvailableMeasurements(doc.uuid)
+                        const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
+
+                        if (!credentials) {
+                            throw self.apos.error('error', "Could not retrieve credentials");
+                        }
+
+                        return await self.apos.modules.influxdb.getAvailableMeasurements(credentials, doc.uuid)
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
@@ -1385,7 +1415,13 @@ module.exports = {
                     try {
                         const measurements = req.query.measurement || []
                         const interval = req.query.interval || '-30d'
-                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(uuid, measurements, interval)
+
+                        const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
+                        if (!credentials) {
+                            throw self.apos.error('error', "Could not retrieve credentials");
+                        }
+
+                        return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(credentials, uuid, measurements, interval )
                     } catch (error) {
                         throw self.apos.error('error', error.message);
                     }
