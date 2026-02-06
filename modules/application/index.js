@@ -537,6 +537,34 @@ module.exports = {
                 console.error("Couldn't run migration ", e)
             }
         });
+        self.apos.migration.add('fix-slo-violations-revert', async () => {
+            try {
+                await self.apos.migration.eachDoc({
+                    type: 'application',
+                }, async (doc) => {
+                    if(doc.sloViolations) {
+                        try{
+                            let creations = ""
+                            if(Array.isArray(doc.sloViolations) && doc.sloViolations.length > 0) {
+                               creations = JSON.stringify(doc.sloViolations[0])
+                            }else{
+                                creations =  JSON.parse(doc.sloViolations)
+                                if(Array.isArray(creations) && creations.length > 0) {
+                                   creations = JSON.stringify(creations[0])
+                                }
+                            }
+                            await self.apos.doc.db.updateOne({
+                                _id: doc._id
+                            }, {
+                                $set: {sloViolations: creations},
+                            });
+                        }catch (error) {}
+                    }
+                });
+            } catch (e) {
+                console.error("Couldn't run migration ", e)
+            }
+        });
 
     },
     handlers(self) {
