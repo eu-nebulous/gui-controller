@@ -76,6 +76,7 @@ module.exports = {
                         queryApi.queryRows(fluxQuery, {
                             next(row, tableMeta) {
                                 const o = tableMeta.toObject(row);
+                                console.debug("Handling row")
                                 timeSeriesData.push({
                                     time: o._time,
                                     measurement: o._measurement,
