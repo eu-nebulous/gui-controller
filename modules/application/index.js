@@ -1445,7 +1445,6 @@ module.exports = {
                         const interval = req.query.interval || '-30d'
 
                         const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
-                        console.log("Got credentials ",credentials)
                         if (!credentials) {
                             throw self.apos.error('error', "Could not retrieve credentials");
                         }
@@ -1473,7 +1472,13 @@ module.exports = {
                         const range = req.query.range || 10
                         const slice = req.query.slice || 5
 
-                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(doc.uuid, measurements, interval)
+                        const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
+                        if (!credentials) {
+                            throw self.apos.error('error', "Could not retrieve credentials");
+                        }
+                        console.log(new Date(), "Fetching data ")
+                        const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(credentials,doc.uuid, measurements, interval)
+                        console.log(new Date(), "Fetched data ... ")
                         return {
                             application: doc.title,
                             uuid: doc.uuid,
