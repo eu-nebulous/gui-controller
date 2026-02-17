@@ -117,7 +117,11 @@ module.exports = {
                             return
                         }
                         if (context.message.to === "topic://eu.nebulouscloud.app_cluster.influxdb.get.reply") {
-                            correlations[context.message.correlation_id]['resolve'](context.message.body)
+                            if (context.message.correlation_id in correlations) {
+                                correlations[context.message.correlation_id]['resolve'](context.message.body)
+                            }else{
+                                console.warn("Ignoring reply, not initiated by us, correlation id ", context.message.correlation_id, "is not in", correlations);
+                            }
                             return
                         }
 
@@ -400,9 +404,7 @@ module.exports = {
                 return new Promise((resolve, reject) => {
 
                     const correlation_id = uuidv4()
-                    correlations[correlation_id] = {
-                        'resolve': resolve, 'reject': reject,
-                    };
+
                      const req = aposSelf.apos.task.getReq()
                      const message = {
                         to: sender_app_influxdb.options.target.address,
@@ -414,9 +416,15 @@ module.exports = {
                    const timer = setTimeout(() => {
                         console.warn("InfluxDB Crendetials not retrieved for application = ",uuid)
                         resolve(false)
-                    }, 7000);
-
+                    }, 10000);
                     console.log("[getApplicationInfluxDBCrendetials] Send ", JSON.stringify( message))
+                    correlations[correlation_id] = {
+                        'resolve': (data)=>{
+                            clearTimeout(timer)
+                            resolve(data)
+                        }, 'reject': reject,
+                    };
+
                     sender_app_influxdb.send(message)
                 })
             },
