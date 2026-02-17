@@ -1410,7 +1410,8 @@ module.exports = {
                         const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
                         console.log("Got application influxDBCredentials ",credentials)
                         if (!credentials) {
-                            throw self.apos.error('error', "Could not retrieve credentials");
+                            console.error("Could not retrieve credentials")
+                            return []
                         }
 
                         return await self.apos.modules.influxdb.getAvailableMeasurements(credentials, doc.uuid)
@@ -1446,7 +1447,8 @@ module.exports = {
 
                         const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
                         if (!credentials) {
-                            throw self.apos.error('error', "Could not retrieve credentials");
+                            console.error("Could not retrieve credentials")
+                            return []
                         }
 
                         return await self.apos.modules.influxdb.getTimeSeriesForMeasurements(credentials, uuid, measurements, interval )
@@ -1474,7 +1476,8 @@ module.exports = {
 
                         const credentials = await self.apos.modules.exn.getApplicationInfluxDBCredentials(doc.uuid)
                         if (!credentials) {
-                            throw self.apos.error('error', "Could not retrieve credentials");
+                            console.error("Could not retrieve credentials")
+                            return []
                         }
                         console.log(new Date(), "Fetching data ")
                         const res = await self.apos.modules.influxdb.getTimeSeriesForMeasurements(credentials,doc.uuid, measurements, interval)
